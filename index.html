@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Wikis de Alumnos</title>
+
+    <!-- ═══════════ PWA: manifiesto, tema e iconos ═══════════
+         Nombres propios (manifest_wikis / sw_wikis) y rutas relativas
+         para no chocar con el manifest/SW raíz del portal TecDeA. -->
+    <link rel="manifest" href="./manifest_wikis.webmanifest">
+    <meta name="theme-color" content="#4338ca">
+    <meta name="description" content="Registro de wikis del alumnado sincronizado con Google Sheets en tiempo real. Aplicación del portal TecDeA.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Wikis Alumnos">
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/x-icon" sizes="any" href="icons/favicon.ico">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Animación suave para el panel y modal */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Estilos de tabla responsive */
+        .table-container { overflow-x: auto; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+    <div id="app" class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Encabezado y Controles Globales -->
+        <header class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-700">Registro de Wikis</h1>
+                <p class="text-sm text-gray-500 mt-1">Sincronizado con Google Sheets en tiempo real</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-4 items-center w-full sm:w-auto">
+                <!-- Botón de Instalar PWA (aparece cuando el navegador lo permite) -->
+                <button id="btn-install" class="hidden items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-md font-medium transition w-full sm:w-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Instalar app
+                </button>
+
+                <!-- Botón de Exportar -->
+                <button onclick="openExportModal()" class="flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-md font-medium hover:bg-indigo-100 transition border border-indigo-200 w-full sm:w-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Exportar
+                </button>
+
+                <!-- Selector de Rol -->
+                <div class="bg-gray-100 p-1 rounded-lg flex text-sm w-full sm:w-auto">
+                    <button id="role-user" class="flex-1 py-1.5 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800" onclick="setRole('user')">
+                        Modo Alumno
+                    </button>
+                    <button id="role-admin" class="flex-1 py-1.5 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition" onclick="requestAdminAccess()">
+                        Modo Admin
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Área Principal de la App (Siempre visible ahora) -->
+        <div id="main-content" class="hidden fade-in space-y-6">
+            
+            <!-- Selector de Curso y Estado de Sincronización -->
+            <div class="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <label class="font-semibold text-gray-700">Curso Académico:</label>
+                    <select id="course-selector" class="border-gray-300 border rounded-lg px-3 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 font-medium" onchange="changeCourse()">
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 mt-4 sm:mt-0 text-sm">
+                    <span id="sync-status" class="flex items-center gap-1 text-green-600 font-medium">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        Sincronizado
+                    </span>
+                    <span id="last-sync-time" class="text-gray-400 text-xs ml-2"></span>
+                </div>
+            </div>
+
+            <!-- Formulario de Añadir -->
+            <div id="add-form-container" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800" id="form-title">Añadir nueva Wiki</h2>
+                <form id="wiki-form" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Alumno</label>
+                        <input type="text" id="input-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. Ana García">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+                        <input type="text" id="input-grupo" class="w-full border-gray-300 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. 1ºA">
+                    </div>
+                    <div class="md:col-span-5">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">URL de la Wiki</label>
+                        <input type="url" id="input-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://sites.google.com/...">
+                    </div>
+                    <div class="md:col-span-10">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notas / Observaciones</label>
+                        <input type="text" id="input-notas" class="w-full border-gray-300 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opcional...">
+                    </div>
+                    <div class="md:col-span-2 flex items-end">
+                        <button type="submit" id="btn-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-sm">
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="table-container">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Alumno</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Grupo</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Enlace a la Wiki</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Notas</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Fecha</th>
+                                <th id="th-actions" class="py-3 px-4 font-semibold text-sm text-gray-600 text-right hidden">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-gray-500">Cargando datos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal de Edición (Solo Admin) -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 fade-in px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4">Editar Wiki</h2>
+            <form id="edit-form" onsubmit="handleEditSubmit(event)">
+                <input type="hidden" id="edit-id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Curso</label>
+                    <select id="edit-curso" class="w-full border-gray-300 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <div class="mb-4 flex gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                        <input type="text" id="edit-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="w-1/3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
+                        <input type="text" id="edit-grupo" class="w-full border-gray-300 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                    <input type="url" id="edit-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    <textarea id="edit-notas" rows="2" class="w-full border-gray-300 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Exportación -->
+    <div id="export-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 fade-in px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Exportar Datos</h2>
+            <p class="text-sm text-gray-600 mb-4">Selecciona los campos que deseas incluir en la exportación:</p>
+            
+            <div class="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200" id="export-fields">
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="curso" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Curso Académico</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="nombre" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Nombre del Alumno</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="grupo" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Grupo</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="url" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">URL de la Wiki</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="notas" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Notas / Observaciones</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="fecha" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Fecha de creación</span></label>
+            </div>
+            
+            <div class="flex flex-wrap justify-end gap-2">
+                <button onclick="closeExportModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                <button onclick="exportData('html')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg> HTML
+                </button>
+                <button onclick="exportData('pdf')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Contraseña Admin -->
+    <div id="password-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 fade-in px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center">
+            <h2 class="text-xl font-bold mb-2">Acceso Administrador</h2>
+            <p class="text-sm text-gray-600 mb-4">Introduce la contraseña (por defecto es "admin"):</p>
+            <input type="password" id="admin-password-input" class="w-full border-gray-300 border rounded-lg px-4 py-2 mb-4 text-center outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-center gap-2">
+                <button onclick="document.getElementById('password-modal').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                <button onclick="verifyAdminPassword()" id="btn-verify-pwd" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition font-medium">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cambio de Contraseña -->
+    <div id="change-pwd-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 fade-in px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center">
+            <h2 class="text-xl font-bold mb-4">Cambiar Contraseña</h2>
+            <input type="password" id="new-password-input" placeholder="Nueva contraseña" class="w-full border-gray-300 border rounded-lg px-4 py-2 mb-4 text-center outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-center gap-2">
+                <button onclick="document.getElementById('change-pwd-modal').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                <button onclick="executeChangePassword()" id="btn-change-pwd" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition font-medium">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales (AQUÍ DEBES PEGAR TU URL DE GOOGLE APPS SCRIPT)
+        let gasUrl = 'https://script.google.com/macros/s/AKfycbxkCcpb8SkeXhSfk1gSi0jnHiKRC2lQaXSP_BNXX_RXn5ry4hxfVhKs7-0S2K2tCh_ONA/exec'; 
+        
+        let currentRole = 'user'; 
+        let currentCourse = '';
+        let selectedCourse = '';
+        let wikisData = [];
+        let isSyncing = false;
+        let syncInterval = null;
+
+        // --- PWA: datos de la última sesión para uso sin conexión ---
+        const LOCAL_DATA_KEY = 'wikis_datos_ultima_sesion';
+        let offlineMode = false;
+
+        // Inicialización
+        function init() {
+            determineCurrentCourse();
+            populateCourseSelector();
+            
+            // Mostrar la interfaz principal directamente
+            document.getElementById('main-content').classList.remove('hidden');
+            
+            // CORRECCIÓN AQUÍ: Solo comprobamos que sea una URL válida de Google
+            if (gasUrl && gasUrl.startsWith('https://script.google.com/')) {
+                fetchData();
+                startRealtimeSync();
+            } else {
+                showMessage("Aviso: Configura la URL del script en el código HTML", "error");
+            }
+            
+            updateUIByRole();
+        }
+
+        function determineCurrentCourse() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth(); // 0 = Enero, 8 = Septiembre
+
+            if (month >= 8) {
+                currentCourse = `${year}-${year + 1}`;
+            } else {
+                currentCourse = `${year - 1}-${year}`;
+            }
+            selectedCourse = currentCourse;
+        }
+
+        function populateCourseSelector() {
+            const selector = document.getElementById('course-selector');
+            const editSelector = document.getElementById('edit-curso');
+            selector.innerHTML = '';
+            editSelector.innerHTML = '';
+            
+            const baseYear = 2020;
+            const currentYear = new Date().getFullYear();
+            const endYear = currentYear + 2;
+
+            for (let y = endYear; y >= baseYear; y--) {
+                const courseString = `${y}-${y + 1}`;
+                
+                const option = document.createElement('option');
+                option.value = courseString;
+                option.textContent = courseString + (courseString === currentCourse ? ' (Actual)' : '');
+                if (courseString === currentCourse) option.selected = true;
+                selector.appendChild(option);
+
+                const editOption = option.cloneNode(true);
+                editSelector.appendChild(editOption);
+            }
+        }
+
+        function changeCourse() {
+            selectedCourse = document.getElementById('course-selector').value;
+            renderTable();
+            updateUIByRole();
+        }
+
+        // --- ROLES Y SEGURIDAD ---
+        function setRole(role) {
+            currentRole = role;
+            const btnUser = document.getElementById('role-user');
+            const btnAdmin = document.getElementById('role-admin');
+            
+            if (role === 'user') {
+                btnUser.className = "flex-1 py-1.5 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800";
+                btnAdmin.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition";
+            } else {
+                btnAdmin.className = "flex-1 py-1.5 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800";
+                btnUser.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition";
+            }
+
+            updateUIByRole();
+        }
+
+        function requestAdminAccess() {
+            document.getElementById('admin-password-input').value = '';
+            document.getElementById('password-modal').classList.remove('hidden');
+        }
+
+        async function verifyAdminPassword() {
+            const pwd = document.getElementById('admin-password-input').value;
+            const btn = document.getElementById('btn-verify-pwd');
+            btn.disabled = true;
+            btn.innerHTML = "Comprobando...";
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'verify_password');
+            formData.append('password', pwd);
+
+            try {
+                const res = await fetch(gasUrl, { method: 'POST', body: formData });
+                const json = await res.json();
+                if (json.success) {
+                    document.getElementById('password-modal').classList.add('hidden');
+                    setRole('admin');
+                    showMessage("Acceso administrador concedido");
+                } else {
+                    showMessage(json.error, "error");
+                }
+            } catch (e) {
+                showMessage("Error de red", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "Entrar";
+            }
+        }
+
+        function openChangePasswordModal() {
+            document.getElementById('new-password-input').value = '';
+            document.getElementById('change-pwd-modal').classList.remove('hidden');
+        }
+
+        async function executeChangePassword() {
+            const newPwd = document.getElementById('new-password-input').value;
+            if(!newPwd) return showMessage("Introduce una contraseña válida", "error");
+
+            const btn = document.getElementById('btn-change-pwd');
+            btn.disabled = true;
+            btn.innerHTML = "Guardando...";
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'change_password');
+            formData.append('new_password', newPwd);
+
+            try {
+                const res = await fetch(gasUrl, { method: 'POST', body: formData });
+                const json = await res.json();
+                if (json.success) {
+                    document.getElementById('change-pwd-modal').classList.add('hidden');
+                    showMessage("Contraseña cambiada correctamente");
+                } else {
+                    showMessage("Error al cambiar contraseña", "error");
+                }
+            } catch (e) {
+                showMessage("Error de red", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "Guardar";
+            }
+        }
+
+        function updateUIByRole() {
+            const addFormContainer = document.getElementById('add-form-container');
+            const thActions = document.getElementById('th-actions');
+
+            if (currentRole === 'admin' || selectedCourse === currentCourse) {
+                addFormContainer.classList.remove('hidden');
+            } else {
+                addFormContainer.classList.add('hidden');
+            }
+
+            if (currentRole === 'admin') {
+                thActions.classList.remove('hidden');
+            } else {
+                thActions.classList.add('hidden');
+            }
+
+            renderTable();
+        }
+
+        // --- COMUNICACIÓN CON GAS (CRUD) ---
+        function setSyncing(status) {
+            isSyncing = status;
+            const syncUI = document.getElementById('sync-status');
+            if (status) {
+                syncUI.innerHTML = `<span class="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full inline-block"></span> Actualizando...`;
+                syncUI.className = "flex items-center gap-1 text-blue-600 font-medium";
+            } else if (offlineMode) {
+                syncUI.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M8.5 16.5a5 5 0 017.03 0M5 13a10 10 0 013.16-2.13M19 13a10 10 0 00-2.42-1.81M2 8.82a15 15 0 015.17-2.94M22 8.82a15 15 0 00-9.94-3.28M12 20h.01"></path></svg>
+                    Sin conexión`;
+                syncUI.className = "flex items-center gap-1 text-amber-600 font-medium";
+            } else {
+                syncUI.innerHTML = `
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span> Sincronizado`;
+                syncUI.className = "flex items-center gap-1 text-green-600 font-medium";
+                const d = new Date();
+                document.getElementById('last-sync-time').innerText = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+            }
+        }
+
+        async function fetchData() {
+            if (!gasUrl) return;
+            setSyncing(true);
+            try {
+                const response = await fetch(`${gasUrl}?action=read`);
+                const result = await response.json();
+                if (result.success) {
+                    wikisData = result.data;
+                    guardarDatosLocales();
+                    if (offlineMode) salirModoOffline();
+                    renderTable();
+                } else {
+                    console.error("Error GAS:", result.error);
+                }
+            } catch (error) {
+                // Sin conexión con el servidor de datos: mostrar los
+                // datos guardados de la última sesión (modo offline PWA)
+                entrarModoOffline(error);
+            } finally {
+                setSyncing(false);
+            }
+        }
+
+        // --- PWA: helpers de modo offline ---
+        function guardarDatosLocales() {
+            try {
+                localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify({ guardado: Date.now(), datos: wikisData }));
+            } catch (e) { /* almacenamiento no disponible: se ignora */ }
+        }
+
+        function entrarModoOffline(error) {
+            const primeraVez = !offlineMode;
+            offlineMode = true;
+
+            let datos = null;
+            try {
+                const guardado = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || 'null');
+                if (guardado && Array.isArray(guardado.datos)) datos = guardado.datos;
+            } catch (e) { /* contenido corrupto: se ignora */ }
+
+            if (datos && datos.length > 0) {
+                wikisData = datos;
+                renderTable();
+                if (primeraVez) showMessage("Sin conexión: mostrando los datos de la última sesión", "error");
+            } else if (primeraVez) {
+                showMessage("Sin conexión y sin datos guardados aún", "error");
+            }
+            setSyncing(false); // refresca el indicador al estado "Sin conexión"
+            console.warn("Sin conexión con el servidor de datos:", error);
+        }
+
+        function salirModoOffline() {
+            offlineMode = false;
+            showMessage("Conexión restablecida: datos actualizados");
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!gasUrl) return;
+
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.innerHTML = "Guardando...";
+
+            const nombre = document.getElementById('input-nombre').value;
+            const grupo = document.getElementById('input-grupo').value;
+            const url = document.getElementById('input-url').value;
+            const notas = document.getElementById('input-notas').value;
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'create');
+            formData.append('curso', selectedCourse);
+            formData.append('nombre', nombre);
+            formData.append('grupo', grupo);
+            formData.append('url', url);
+            formData.append('notas', notas);
+
+            try {
+                const response = await fetch(gasUrl, { method: 'POST', body: formData });
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('wiki-form').reset();
+                    fetchData();
+                    showMessage("Wiki guardada con éxito");
+                } else {
+                    showMessage("Error al guardar: " + result.error, "error");
+                }
+            } catch (error) {
+                showMessage("Error de conexión", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "Guardar";
+            }
+        }
+
+        // --- BORRAR WIKI ---
+        function deleteWiki(id) {
+            const modalHtml = `
+                <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] px-4">
+                    <div class="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full text-center">
+                        <h3 class="text-lg font-bold mb-2 text-gray-800">¿Estás seguro?</h3>
+                        <p class="text-sm text-gray-500 mb-6">Esta acción no se puede deshacer.</p>
+                        <div class="flex justify-center gap-3">
+                            <button onclick="document.getElementById('confirm-modal').remove()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                            <button onclick="executeDelete('${id}'); document.getElementById('confirm-modal').remove()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Eliminar</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        window.executeDelete = async function(id) {
+            setSyncing(true);
+            const formData = new URLSearchParams();
+            formData.append('action', 'delete');
+            formData.append('id', id);
+
+            try {
+                await fetch(gasUrl, { method: 'POST', body: formData });
+                showMessage("Wiki eliminada");
+                fetchData();
+            } catch (e) {
+                console.error(e);
+                setSyncing(false);
+                showMessage("Error al eliminar", "error");
+            }
+        };
+
+        // --- EDITAR WIKI ---
+        function openEditModal(id) {
+            const item = wikisData.find(w => w.id === id);
+            if (!item) return;
+            
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-curso').value = item.curso;
+            document.getElementById('edit-nombre').value = item.nombre;
+            document.getElementById('edit-grupo').value = item.grupo || '';
+            document.getElementById('edit-url').value = item.url;
+            document.getElementById('edit-notas').value = item.notas || '';
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        async function handleEditSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const curso = document.getElementById('edit-curso').value;
+            const nombre = document.getElementById('edit-nombre').value;
+            const grupo = document.getElementById('edit-grupo').value;
+            const url = document.getElementById('edit-url').value;
+            const notas = document.getElementById('edit-notas').value;
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = "Guardando...";
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'update');
+            formData.append('id', id);
+            formData.append('curso', curso);
+            formData.append('nombre', nombre);
+            formData.append('grupo', grupo);
+            formData.append('url', url);
+            formData.append('notas', notas);
+
+            try {
+                await fetch(gasUrl, { method: 'POST', body: formData });
+                closeEditModal();
+                showMessage("Wiki actualizada");
+                fetchData();
+            } catch (err) {
+                console.error(err);
+                showMessage("Error al actualizar", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "Actualizar";
+            }
+        }
+
+        // --- EXPORTACIÓN ---
+        function openExportModal() {
+            if (wikisData.length === 0) {
+                showMessage("No hay datos para exportar.", "error");
+                return;
+            }
+            document.getElementById('export-modal').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-modal').classList.add('hidden');
+        }
+
+        function getExportHTMLContent() {
+            const checkboxes = document.querySelectorAll('#export-fields input[type="checkbox"]:checked');
+            const selectedFields = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedFields.length === 0) return null;
+
+            const dataToExport = [...wikisData].sort((a, b) => {
+                if (a.curso !== b.curso) return b.curso.localeCompare(a.curso);
+                return a.nombre.localeCompare(b.nombre);
+            });
+
+            const fieldNames = {
+                'curso': 'Curso', 'nombre': 'Alumno', 'grupo': 'Grupo', 
+                'url': 'Enlace (URL)', 'notas': 'Notas', 'fecha': 'Fecha'
+            };
+
+            let html = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #4338ca; text-align: center; margin-bottom: 20px;">Registro de Wikis de Alumnado</h2>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #f3f4f6;">
+                            ${selectedFields.map(f => `<th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">${fieldNames[f]}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            dataToExport.forEach(item => {
+                html += '<tr style="border-bottom: 1px solid #e5e7eb;">';
+                selectedFields.forEach(f => {
+                    let val = item[f] || '';
+                    if (f === 'fecha') {
+                        const d = new Date(val);
+                        val = !isNaN(d.getTime()) ? d.toLocaleDateString() : '';
+                    } else if (f === 'url' && val) {
+                        val = `<a href="${val}" style="color: #2563eb; text-decoration: none;">${val}</a>`;
+                    }
+                    html += `<td style="border: 1px solid #d1d5db; padding: 8px;">${val}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += `</tbody></table></div>`;
+            return html;
+        }
+
+        function exportData(format) {
+            const htmlContent = getExportHTMLContent();
+            if (!htmlContent) {
+                showMessage("Selecciona al menos un campo para exportar", "error");
+                return;
+            }
+
+            if (format === 'html') {
+                const fullHtml = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Exportación Wikis</title></head><body>${htmlContent}</body></html>`;
+                const blob = new Blob([fullHtml], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exportacion_wikis.html';
+                a.click();
+                URL.revokeObjectURL(url);
+                closeExportModal();
+                showMessage("Archivo HTML descargado con éxito");
+            } 
+            else if (format === 'pdf') {
+                const container = document.createElement('div');
+                container.innerHTML = htmlContent;
+                
+                const opt = {
+                  margin:       10,
+                  filename:     'exportacion_wikis.pdf',
+                  image:        { type: 'jpeg', quality: 0.98 },
+                  html2canvas:  { scale: 2 },
+                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                };
+                
+                showMessage("Generando PDF, por favor espera...", "info");
+                
+                html2pdf().set(opt).from(container).save().then(() => {
+                    closeExportModal();
+                });
+            }
+        }
+
+        // --- RENDERIZADO Y UTILIDADES ---
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            const filteredData = wikisData.filter(w => w.curso === selectedCourse);
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-gray-500">No hay wikis registradas para el curso ${selectedCourse}</td></tr>`;
+                return;
+            }
+
+            filteredData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            filteredData.forEach(item => {
+                const dateObj = new Date(item.fecha);
+                const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString() : 'Desconocida';
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition border-b border-gray-100 last:border-0";
+                
+                let actionsHtml = '';
+                if (currentRole === 'admin') {
+                    actionsHtml = `
+                        <td class="py-3 px-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <button onclick="openEditModal('${item.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button onclick="deleteWiki('${item.id}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title="Borrar">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>`;
+                } else {
+                    actionsHtml = `<td class="py-3 px-4 hidden th-actions-cell"></td>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-medium text-gray-800">${item.nombre}</td>
+                    <td class="py-3 px-4 text-gray-600">${item.grupo || '-'}</td>
+                    <td class="py-3 px-4">
+                        <a href="${item.url}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                            ${item.url.replace(/^https?:\/\//, '')}
+                            <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        </a>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600 max-w-xs truncate" title="${item.notas || ''}">${item.notas || '-'}</td>
+                    <td class="py-3 px-4 text-gray-500 text-sm">${dateStr}</td>
+                    ${actionsHtml}
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showMessage(msg, type="info") {
+            const color = type === "error" ? "bg-red-500" : "bg-green-500";
+            const toastHtml = `
+                <div id="toast-msg" class="fixed bottom-4 right-4 ${color} text-white px-6 py-3 rounded-lg shadow-lg fade-in z-[100]">
+                    ${msg}
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', toastHtml);
+            setTimeout(() => {
+                const el = document.getElementById('toast-msg');
+                if(el) el.remove();
+            }, 3000);
+        }
+
+        function startRealtimeSync() {
+            if (syncInterval) clearInterval(syncInterval);
+            syncInterval = setInterval(() => {
+                if (!isSyncing && gasUrl) {
+                    fetchData();
+                }
+            }, 10000); 
+        }
+
+        // Exponer función de inicialización globalmente para asegurarnos
+        window.onload = init;
+
+    </script>
+
+    <script>
+        // ════════════════════════════════════════════════════════
+        //  PWA: Service Worker, botón de instalación y conectividad
+        // ════════════════════════════════════════════════════════
+        // El SW se registra con scope './' (la carpeta de esta app,
+        // p. ej. https://tecdea.github.io/app_wikis/), de modo que
+        // NUNCA intercepta las peticiones del portal TecDeA ni de
+        // otras aplicaciones alojadas en el mismo dominio.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker
+                    .register('./sw_wikis.js', { scope: './', updateViaCache: 'none' })
+                    .then((reg) => console.log('[PWA] Service Worker activo. Scope:', reg.scope))
+                    .catch((err) => console.warn('[PWA] No se pudo registrar el Service Worker:', err));
+            });
+        }
+
+        // Botón "Instalar app": aparece cuando el navegador ofrece la
+        // instalación (Chrome/Edge/Android; en iOS se usa "Compartir →
+        // Añadir a pantalla de inicio" gracias a los meta apple-touch).
+        let deferredInstallPrompt = null;
+        const btnInstall = document.getElementById('btn-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (btnInstall) btnInstall.classList.remove('hidden');
+        });
+
+        if (btnInstall) {
+            btnInstall.addEventListener('click', async () => {
+                if (!deferredInstallPrompt) return;
+                deferredInstallPrompt.prompt();
+                await deferredInstallPrompt.userChoice;
+                deferredInstallPrompt = null;
+                btnInstall.classList.add('hidden');
+            });
+        }
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            if (btnInstall) btnInstall.classList.add('hidden');
+            console.log('[PWA] Aplicación instalada');
+        });
+
+        // Al recuperar la conexión se vuelve a sincronizar automáticamente
+        window.addEventListener('online', () => fetchData());
+        window.addEventListener('offline', () => entrarModoOffline());
+    </script>
+</body>
+</html>
