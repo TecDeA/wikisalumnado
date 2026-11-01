@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Icono "Gestor de Wikis de Alumnos": libro abierto sobre gradiente índigo -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#3730A3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="225" fill="url(#bg)"/>
+  <polygon points="512,336 204,376 204,676 512,736" fill="#FFFFFF"/>
+  <polygon points="512,336 820,376 820,676 512,736" fill="#FFFFFF"/>
+  <g stroke="#4F46E5" stroke-width="22" stroke-linecap="round">
+    <line x1="268" y1="440" x2="452" y2="440"/>
+    <line x1="572" y1="440" x2="756" y2="440"/>
+    <line x1="268" y1="512" x2="420" y2="512"/>
+    <line x1="604" y1="512" x2="756" y2="512"/>
+    <line x1="268" y1="584" x2="452" y2="584"/>
+    <line x1="572" y1="584" x2="756" y2="584"/>
+  </g>
+</svg>
