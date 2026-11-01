@@ -118,6 +118,23 @@
 
             <!-- Tabla de Datos -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <!-- Barra de filtros: nombre del alumno y grupo -->
+                <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3 sm:items-center">
+                    <div class="relative flex-1">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="filter-nombre" oninput="applyFilters()" autocomplete="off" class="w-full border-gray-300 border rounded-lg pl-9 pr-9 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Filtrar por nombre del alumno...">
+                        <button type="button" id="filter-clear" onclick="clearNameFilter()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded" title="Limpiar búsqueda">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="filter-grupo" onchange="applyFilters()" class="border-gray-300 border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium">
+                            <option value="">Todos los grupos</option>
+                        </select>
+                        <button type="button" id="btn-reset-filters" onclick="resetFilters()" class="hidden whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800 font-medium px-2 py-2">Limpiar filtros</button>
+                        <span id="filter-count" class="text-sm text-gray-500 whitespace-nowrap ml-auto sm:ml-0"></span>
+                    </div>
+                </div>
                 <div class="table-container">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -183,6 +200,7 @@
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h2 class="text-xl font-bold mb-4 text-gray-800">Exportar Datos</h2>
             <p class="text-sm text-gray-600 mb-4">Selecciona los campos que deseas incluir en la exportación:</p>
+            <div id="export-summary" class="mb-4 text-sm bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2"></div>
             
             <div class="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200" id="export-fields">
                 <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="curso" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Curso Académico</span></label>
@@ -238,6 +256,9 @@
         let currentCourse = '';
         let selectedCourse = '';
         let wikisData = [];
+        // Filtros activos de la tabla: búsqueda por nombre y grupo
+        let filtroNombre = '';
+        let filtroGrupo = '';   // '' = todos los grupos; '__sin_grupo__' = sin grupo
         let isSyncing = false;
         let syncInterval = null;
 
@@ -249,6 +270,7 @@
         function init() {
             determineCurrentCourse();
             populateCourseSelector();
+            populateGroupFilter();
             
             // Mostrar la interfaz principal directamente
             document.getElementById('main-content').classList.remove('hidden');
@@ -303,8 +325,100 @@
 
         function changeCourse() {
             selectedCourse = document.getElementById('course-selector').value;
+            populateGroupFilter(); // los grupos disponibles dependen del curso
             renderTable();
             updateUIByRole();
+        }
+
+        // ═══════════ FILTRADO POR NOMBRE Y GRUPO ═══════════
+
+        // Normaliza texto para buscar sin distinguir mayúsculas,
+        // acentos ni espacios sobrantes ("jose ramon" encuentra a "José Ramón")
+        function normalizar(txt) {
+            return (txt || '').toString().toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/º/g, 'o').replace(/ª/g, 'a')
+                .trim();
+        }
+
+        function escapeHtml(txt) {
+            return (txt || '').toString()
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Wikis del curso seleccionado, aún sin filtros de nombre/grupo
+        function getDatosCurso() {
+            return wikisData.filter(w => w.curso === selectedCourse);
+        }
+
+        // Wikis del curso que cumplen el filtro de nombre y grupo
+        // (es la lista que muestra la tabla y la que se exporta)
+        function getDatosFiltrados() {
+            const tokens = normalizar(filtroNombre).split(/\s+/).filter(Boolean);
+            return getDatosCurso().filter(item => {
+                const grupo = (item.grupo || '').trim();
+                if (filtroGrupo === '__sin_grupo__' && grupo !== '') return false;
+                if (filtroGrupo && filtroGrupo !== '__sin_grupo__' && grupo !== filtroGrupo) return false;
+                const nombre = normalizar(item.nombre);
+                return tokens.every(t => nombre.includes(t));
+            });
+        }
+
+        // Rellena el desplegable con los grupos que existen en el curso
+        function populateGroupFilter() {
+            const select = document.getElementById('filter-grupo');
+            const anterior = select.value;
+            const datosCurso = getDatosCurso();
+            const grupos = [...new Set(datosCurso.map(w => (w.grupo || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+
+            let html = '<option value="">Todos los grupos</option>';
+            grupos.forEach(g => {
+                html += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+            });
+            // Solo se ofrece si el curso tiene registros sin grupo asignado
+            if (datosCurso.some(w => !(w.grupo || '').trim())) {
+                html += '<option value="__sin_grupo__">— Sin grupo —</option>';
+            }
+            select.innerHTML = html;
+
+            // Mantener la selección si ese grupo sigue existiendo en el curso
+            if (anterior && [...select.options].some(o => o.value === anterior)) {
+                select.value = anterior;
+            } else {
+                select.value = '';
+                filtroGrupo = '';
+            }
+        }
+
+        // Se llama al escribir en el buscador o al cambiar el desplegable
+        function applyFilters() {
+            filtroNombre = document.getElementById('filter-nombre').value;
+            filtroGrupo = document.getElementById('filter-grupo').value;
+            renderTable();
+        }
+
+        function clearNameFilter() {
+            const input = document.getElementById('filter-nombre');
+            input.value = '';
+            applyFilters();
+            input.focus();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-nombre').value = '';
+            document.getElementById('filter-grupo').value = '';
+            applyFilters();
+        }
+
+        // Descripción legible de los filtros activos (exportaciones)
+        function descripcionFiltros() {
+            const partes = [`Curso ${selectedCourse}`];
+            if (filtroGrupo === '__sin_grupo__') partes.push('Grupo: sin grupo');
+            else if (filtroGrupo) partes.push(`Grupo: ${filtroGrupo}`);
+            if (filtroNombre.trim()) partes.push(`Búsqueda: "${filtroNombre.trim()}"`);
+            return partes.join(' · ');
         }
 
         // --- ROLES Y SEGURIDAD ---
@@ -442,6 +556,7 @@
                 const result = await response.json();
                 if (result.success) {
                     wikisData = result.data;
+                    populateGroupFilter();
                     guardarDatosLocales();
                     if (offlineMode) salirModoOffline();
                     renderTable();
@@ -476,6 +591,7 @@
 
             if (datos && datos.length > 0) {
                 wikisData = datos;
+                populateGroupFilter();
                 renderTable();
                 if (primeraVez) showMessage("Sin conexión: mostrando los datos de la última sesión", "error");
             } else if (primeraVez) {
@@ -618,11 +734,22 @@
         }
 
         // --- EXPORTACIÓN ---
+        // Exporta la lista filtrada que muestra la tabla (curso + filtros)
         function openExportModal() {
-            if (wikisData.length === 0) {
-                showMessage("No hay datos para exportar.", "error");
+            const datosCurso = getDatosCurso();
+            if (datosCurso.length === 0) {
+                showMessage(`No hay wikis para exportar en el curso ${selectedCourse}.`, "error");
                 return;
             }
+            const filtrados = getDatosFiltrados();
+            if (filtrados.length === 0) {
+                showMessage("El filtro actual no devuelve ningún resultado. Limpia los filtros para poder exportar.", "error");
+                return;
+            }
+            const resumen = document.getElementById('export-summary');
+            resumen.textContent = (filtroNombre.trim() || filtroGrupo)
+                ? `Se exportarán ${filtrados.length} de ${datosCurso.length} wikis (${descripcionFiltros()}).`
+                : `Se exportarán las ${filtrados.length} wikis del curso ${selectedCourse}.`;
             document.getElementById('export-modal').classList.remove('hidden');
         }
 
@@ -636,19 +763,23 @@
 
             if (selectedFields.length === 0) return null;
 
-            const dataToExport = [...wikisData].sort((a, b) => {
-                if (a.curso !== b.curso) return b.curso.localeCompare(a.curso);
-                return a.nombre.localeCompare(b.nombre);
-            });
+            // Se exporta la lista filtrada (curso + filtros de nombre/grupo)
+            const dataToExport = getDatosFiltrados().slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
             const fieldNames = {
                 'curso': 'Curso', 'nombre': 'Alumno', 'grupo': 'Grupo', 
                 'url': 'Enlace (URL)', 'notas': 'Notas', 'fecha': 'Fecha'
             };
 
+            // Cabecera con el número de registros y los filtros aplicados
+            const resumenFiltros = (filtroNombre.trim() || filtroGrupo)
+                ? `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 0 0 14px 0;">Listado filtrado (${dataToExport.length} de ${getDatosCurso().length} wikis) — ${escapeHtml(descripcionFiltros())}</p>`
+                : `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 0 0 14px 0;">Listado completo del curso ${selectedCourse} (${dataToExport.length} wikis)</p>`;
+
             let html = `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #4338ca; text-align: center; margin-bottom: 20px;">Registro de Wikis de Alumnado</h2>
+                <h2 style="color: #4338ca; text-align: center; margin-bottom: 4px;">Registro de Wikis de Alumnado</h2>
+                ${resumenFiltros}
                 <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                     <thead>
                         <tr style="background-color: #f3f4f6;">
@@ -677,6 +808,17 @@
             return html;
         }
 
+        // Nombre de archivo que identifica curso y filtros aplicados
+        function nombreArchivoExport(extension) {
+            const sanea = (t) => normalizar(t).replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+            let base = `wikis_${selectedCourse}`;
+            if (filtroGrupo === '__sin_grupo__') base += '_sin-grupo';
+            else if (filtroGrupo) base += `_grupo-${sanea(filtroGrupo)}`;
+            const texto = sanea(filtroNombre).slice(0, 24);
+            if (texto) base += `_busqueda-${texto}`;
+            return `${base}.${extension}`;
+        }
+
         function exportData(format) {
             const htmlContent = getExportHTMLContent();
             if (!htmlContent) {
@@ -690,11 +832,11 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'exportacion_wikis.html';
+                a.download = nombreArchivoExport('html');
                 a.click();
                 URL.revokeObjectURL(url);
                 closeExportModal();
-                showMessage("Archivo HTML descargado con éxito");
+                showMessage(`Lista exportada (${getDatosFiltrados().length} wikis)`);
             } 
             else if (format === 'pdf') {
                 const container = document.createElement('div');
@@ -702,7 +844,7 @@
                 
                 const opt = {
                   margin:       10,
-                  filename:     'exportacion_wikis.pdf',
+                  filename:     nombreArchivoExport('pdf'),
                   image:        { type: 'jpeg', quality: 0.98 },
                   html2canvas:  { scale: 2 },
                   jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
@@ -721,10 +863,15 @@
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            const filteredData = wikisData.filter(w => w.curso === selectedCourse);
+            const datosCurso = getDatosCurso();
+            const filteredData = getDatosFiltrados();
+
+            actualizarUIFiltros(datosCurso.length, filteredData.length);
 
             if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-gray-500">No hay wikis registradas para el curso ${selectedCourse}</td></tr>`;
+                tbody.innerHTML = (datosCurso.length === 0)
+                    ? `<tr><td colspan="6" class="py-12 text-center text-gray-500">No hay wikis registradas para el curso ${selectedCourse}</td></tr>`
+                    : `<tr><td colspan="6" class="py-12 text-center text-gray-500">Ninguna wiki del curso ${selectedCourse} coincide con los filtros aplicados</td></tr>`;
                 return;
             }
 
@@ -769,6 +916,21 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // Contador de resultados y botones de limpieza de la barra de filtros
+        function actualizarUIFiltros(totalCurso, totalFiltrado) {
+            const hayFiltros = filtroNombre.trim() !== '' || filtroGrupo !== '';
+            const count = document.getElementById('filter-count');
+            const btnReset = document.getElementById('btn-reset-filters');
+            const btnClear = document.getElementById('filter-clear');
+
+            count.textContent = hayFiltros
+                ? `${totalFiltrado} de ${totalCurso} resultado${totalFiltrado !== 1 ? 's' : ''}`
+                : `${totalCurso} resultado${totalCurso !== 1 ? 's' : ''}`;
+
+            btnReset.classList.toggle('hidden', !hayFiltros);
+            if (btnClear) btnClear.classList.toggle('hidden', filtroNombre.trim() === '');
         }
 
         function showMessage(msg, type="info") {
