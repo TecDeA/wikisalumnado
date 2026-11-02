@@ -21,7 +21,7 @@
 //     sin tocar (nunca se cachean), aunque compartan origen.
 // ════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'wikis-alumnos-v1.9';
+const CACHE_NAME = 'wikis-alumnos-v1.10';
 
 // Archivo principal de la app: index.html es la entrada canónica de
 // la PWA (el manifest arranca en "./?source=pwa" y el servidor lo
