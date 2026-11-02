@@ -2,7 +2,7 @@
 //  SERVICE WORKER - Gestor de Wikis de Alumnos (PWA)
 // ════════════════════════════════════════════════════════
 //  Este archivo vive DENTRO de la carpeta de la app (p. ej.
-//  /app_wikis/), por lo que su scope se limita a esa carpeta
+//  /wikisalumnado/), por lo que su scope se limita a esa carpeta
 //  y no intercepta NUNCA las peticiones del portal
 //  (https://tecdea.github.io/) ni de otras apps del dominio.
 //  Además, el manejador `fetch` comprueba de forma defensiva
@@ -103,7 +103,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  const scope = self.registration.scope; // p. ej. https://tecdea.github.io/app_wikis/
+  const scope = self.registration.scope; // p. ej. https://tecdea.github.io/wikisalumnado/
 
   // AISLAMIENTO DEL PORTAL: fuera del scope de esta app y de sus
   // 2 CDNs conocidos → no intervenir en absoluto (portal, Firebase,
