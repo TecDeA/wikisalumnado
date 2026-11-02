@@ -1339,7 +1339,15 @@
                 return;
             }
 
-            filteredData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            // Orden alfabético por nombre del alumno (criterio de la
+            // pantalla home), con el grupo como desempate para que la
+            // lista sea estable entre renderizados. Coincide con el
+            // orden que ya usan el autocompletado y la exportación.
+            filteredData.sort((a, b) => {
+                const cmp = (a.nombre || '').localeCompare(b.nombre || '', 'es');
+                if (cmp !== 0) return cmp;
+                return (a.grupo || '').localeCompare(b.grupo || '', 'es', { numeric: true });
+            });
 
             filteredData.forEach(item => {
                 const dateObj = new Date(item.fecha);
