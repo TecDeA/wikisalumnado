@@ -36,7 +36,11 @@
         <!-- Encabezado y Controles Globales -->
         <header class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-indigo-700">Registro de Wikis</h1>
+                <h1 class="text-2xl font-bold text-indigo-700">
+                    Registro de Wikis
+                    <!-- Chip de versión: se rellena con la del service worker -->
+                    <span id="version-chip" class="hidden align-middle ml-1.5 whitespace-nowrap text-xs font-mono font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 select-none">v…</span>
+                </h1>
                 <p class="text-sm text-gray-500 mt-1">Sincronizado con Google Sheets en tiempo real</p>
             </div>
             
@@ -975,6 +979,71 @@
                     .then((reg) => console.log('[PWA] Service Worker activo. Scope:', reg.scope))
                     .catch((err) => console.warn('[PWA] No se pudo registrar el Service Worker:', err));
             });
+        }
+
+        // ════════════════════════════════════════════════════════
+        //  Chip de versión de la cabecera
+        // ════════════════════════════════════════════════════════
+        // La versión vive en el service worker (CACHE_NAME, p. ej.
+        // "wikis-alumnos-v1.2"). Se pide al SW activo (funciona también
+        // sin conexión) y, si no contesta (primera visita con el SW aún
+        // sin controlar, o un SW antiguo desplegado sin el mensaje),
+        // se lee su archivo y se extrae la constante. Si no se puede
+        // saber, el chip no se llega a mostrar.
+
+        // "wikis-alumnos-v1.2" → "v1.2"; si no encaja, el nombre tal cual
+        function versionCorta(cacheName) {
+            const m = /(v\d+(?:\.\d+)*)$/i.exec(cacheName || '');
+            return m ? m[1].toLowerCase() : (cacheName || '');
+        }
+
+        function pedirVersionAlSW() {
+            return new Promise((resolve) => {
+                if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+                    resolve(null);
+                    return;
+                }
+                let resuelto = false;
+                const terminar = (valor) => {
+                    if (resuelto) return;
+                    resuelto = true;
+                    clearTimeout(temporizador);
+                    resolve(valor);
+                };
+                const temporizador = setTimeout(() => terminar(null), 1500);
+                const canal = new MessageChannel();
+                canal.port1.onmessage = (ev) => terminar((ev.data && ev.data.version) || null);
+                navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [canal.port2]);
+            });
+        }
+
+        async function pedirVersionAlArchivo() {
+            try {
+                const res = await fetch('./sw_wikis.js', { cache: 'no-store' });
+                if (!res.ok) return null;
+                const m = (await res.text()).match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+                return m ? m[1] : null;
+            } catch (e) {
+                return null; // sin red y sin SW: no se puede saber
+            }
+        }
+
+        async function initVersionChip() {
+            const chip = document.getElementById('version-chip');
+            if (!chip) return;
+            let cacheName = await pedirVersionAlSW();
+            if (!cacheName) cacheName = await pedirVersionAlArchivo();
+            if (!cacheName) return;
+            chip.textContent = versionCorta(cacheName);
+            chip.title = 'Versión de la app (caché: ' + cacheName + ')';
+            chip.classList.remove('hidden');
+        }
+
+        window.addEventListener('load', initVersionChip);
+        // Cuando el SW que controla la página cambia (actualización),
+        // se refresca la versión pintada
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', initVersionChip);
         }
 
         // Botón "Instalar app": aparece cuando el navegador ofrece la
