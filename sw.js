@@ -12,14 +12,16 @@
 //  Estrategias:
 //   · Navegación (index.html): red primero; caché solo si no
 //     hay red (la app siempre recibe la versión publicada).
-//   · Recursos estáticos propios y de los 2 CDN que usa la
-//     app (Tailwind y html2pdf): caché primero + refresco en
-//     segundo plano (stale-while-revalidate) → soporte offline.
-//   · Datos (script.google.com) y cualquier otra petión: se
-//     dejan pasar sin tocar (nunca se cachean).
+//   · Recursos estáticos propios (solo la lista blanca del
+//     shell) y de los 2 CDN que usa la app (Tailwind y
+//     html2pdf): caché primero + refresco en segundo plano
+//     (stale-while-revalidate) → soporte offline.
+//   · Datos del backend y cualquier otra petición (también las
+//     URL con query, p. ej. "?action=read"): se dejan pasar
+//     sin tocar (nunca se cachean), aunque compartan origen.
 // ════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'wikis-alumnos-v1.6';
+const CACHE_NAME = 'wikis-alumnos-v1.7';
 
 // Archivo principal de la app: index.html es la entrada canónica de
 // la PWA (el manifest arranca en "./?source=pwa" y el servidor lo
@@ -100,18 +102,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Solo GET (los POST a Google Apps Script jamás se tocan)
+  // Solo GET (los POST al backend jamás se tocan)
   if (request.method !== 'GET') return;
-
-  const url = new URL(request.url);
-  const scope = self.registration.scope; // p. ej. https://tecdea.github.io/wikisalumnado/
-
-  // AISLAMIENTO DEL PORTAL: fuera del scope de esta app y de sus
-  // 2 CDNs conocidos → no intervenir en absoluto (portal, Firebase,
-  // otras apps en subcarpetas, Google Apps Script, etc.)
-  const esDeLaApp = url.href.startsWith(scope);
-  const esCdnConocido = CDN_ASSETS.includes(url.href);
-  if (!esDeLaApp && !esCdnConocido) return;
 
   // Navegación (el HTML de la app): red primero, caché como respaldo
   if (request.mode === 'navigate') {
@@ -119,9 +111,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Resto de recursos estáticos: caché primero + refresco en segundo plano
+  // Recursos estáticos conocidos (shell y CDNs): caché primero con
+  // refresco en segundo plano. CUALQUIER otra petición —en particular
+  // las que llevan query string, como los "read" del backend cuando
+  // comparte origen con la app— pasa directa a la red, sin cachear.
+  const url = new URL(request.url);
+  if (url.search) return; // los estáticos nunca llevan query
+  const esAssetConocido =
+    SHELL_ASSETS.some((ruta) => url.href === new URL(ruta, self.registration.scope).href) ||
+    CDN_ASSETS.includes(url.href);
+  if (!esAssetConocido) return;
+
   event.respondWith(staleWhileRevalidate(request));
 });
+
+// Lista blanca de recursos propios cacheables (rutas relativas al scope)
+const SHELL_ASSETS = [...new Set([...SHELL_REQUIRED, ...SHELL_OPTIONAL])];
 
 // ── Estrategia: red primero (navegación) ──────────────────
 async function networkFirstNavigation(request) {
