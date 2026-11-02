@@ -673,9 +673,15 @@
             formData.append('id', id);
 
             try {
-                await fetch(gasUrl, { method: 'POST', body: formData });
-                showMessage("Wiki eliminada");
-                fetchData();
+                const response = await fetch(gasUrl, { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    showMessage("Wiki eliminada");
+                    fetchData();
+                } else {
+                    setSyncing(false);
+                    showMessage("Error al eliminar: " + (result.error || "respuesta no válida"), "error");
+                }
             } catch (e) {
                 console.error(e);
                 setSyncing(false);
@@ -724,10 +730,15 @@
             formData.append('notas', notas);
 
             try {
-                await fetch(gasUrl, { method: 'POST', body: formData });
-                closeEditModal();
-                showMessage("Wiki actualizada");
-                fetchData();
+                const response = await fetch(gasUrl, { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    closeEditModal();
+                    showMessage("Wiki actualizada");
+                    fetchData();
+                } else {
+                    showMessage("Error al actualizar: " + (result.error || "respuesta no válida"), "error");
+                }
             } catch (err) {
                 console.error(err);
                 showMessage("Error al actualizar", "error");
