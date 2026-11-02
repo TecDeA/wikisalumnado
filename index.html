@@ -6,9 +6,10 @@
     <title>Gestor de Wikis de Alumnos</title>
 
     <!-- ═══════════ PWA: manifiesto, tema e iconos ═══════════
-         Nombres propios (manifest_wikis / sw_wikis) y rutas relativas
-         para no chocar con el manifest/SW raíz del portal TecDeA. -->
-    <link rel="manifest" href="./manifest_wikis.webmanifest">
+         Rutas relativas (scope de subcarpeta) para no chocar
+         con el manifest/SW raíz del portal TecDeA. La app vive
+         en https://tecdea.github.io/wikisalumnado/. -->
+    <link rel="manifest" href="./manifest.webmanifest">
     <meta name="theme-color" content="#4338ca">
     <meta name="description" content="Registro de wikis del alumnado sincronizado con Google Sheets en tiempo real. Aplicación del portal TecDeA.">
     <meta name="mobile-web-app-capable" content="yes">
@@ -513,15 +514,14 @@
             const addFormContainer = document.getElementById('add-form-container');
             const thActions = document.getElementById('th-actions');
 
-            if (currentRole === 'admin' || selectedCourse === currentCourse) {
-                addFormContainer.classList.remove('hidden');
-            } else {
-                addFormContainer.classList.add('hidden');
-            }
-
+            // El formulario de añadir y la columna de acciones solo están
+            // disponibles para el administrador. El modo "Alumno" es de
+            // solo lectura (visualiza los enlaces del curso seleccionado).
             if (currentRole === 'admin') {
+                addFormContainer.classList.remove('hidden');
                 thActions.classList.remove('hidden');
             } else {
+                addFormContainer.classList.add('hidden');
                 thActions.classList.add('hidden');
             }
 
@@ -613,6 +613,11 @@
         async function handleFormSubmit(e) {
             e.preventDefault();
             if (!gasUrl) return;
+            // Solo el administrador puede crear enlaces.
+            if (currentRole !== 'admin') {
+                showMessage("Necesitas acceso de administrador para añadir enlaces", "error");
+                return;
+            }
 
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
@@ -667,6 +672,11 @@
         }
 
         window.executeDelete = async function(id) {
+            // Solo el administrador puede borrar enlaces.
+            if (currentRole !== 'admin') {
+                showMessage("Necesitas acceso de administrador para eliminar enlaces", "error");
+                return;
+            }
             setSyncing(true);
             const formData = new URLSearchParams();
             formData.append('action', 'delete');
@@ -709,6 +719,12 @@
 
         async function handleEditSubmit(e) {
             e.preventDefault();
+            // Solo el administrador puede editar enlaces.
+            if (currentRole !== 'admin') {
+                showMessage("Necesitas acceso de administrador para editar enlaces", "error");
+                closeEditModal();
+                return;
+            }
             const id = document.getElementById('edit-id').value;
             const curso = document.getElementById('edit-curso').value;
             const nombre = document.getElementById('edit-nombre').value;
@@ -980,13 +996,13 @@
         //  PWA: Service Worker, botón de instalación y conectividad
         // ════════════════════════════════════════════════════════
         // El SW se registra con scope './' (la carpeta de esta app,
-        // p. ej. https://tecdea.github.io/app_wikis/), de modo que
+        // https://tecdea.github.io/wikisalumnado/), de modo que
         // NUNCA intercepta las peticiones del portal TecDeA ni de
         // otras aplicaciones alojadas en el mismo dominio.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker
-                    .register('./sw_wikis.js', { scope: './', updateViaCache: 'none' })
+                    .register('./sw.js', { scope: './', updateViaCache: 'none' })
                     .then((reg) => console.log('[PWA] Service Worker activo. Scope:', reg.scope))
                     .catch((err) => console.warn('[PWA] No se pudo registrar el Service Worker:', err));
             });
@@ -1030,7 +1046,7 @@
 
         async function pedirVersionAlArchivo() {
             try {
-                const res = await fetch('./sw_wikis.js', { cache: 'no-store' });
+                const res = await fetch('./sw.js', { cache: 'no-store' });
                 if (!res.ok) return null;
                 const m = (await res.text()).match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
                 return m ? m[1] : null;
