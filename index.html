@@ -105,7 +105,7 @@
             }
             table.wikis-table td::before {
                 content: attr(data-label);
-                font-weight: 600; color: #6b7280;
+                font-weight: 600; color: #4b5563;
                 font-size: 0.7rem; text-transform: uppercase;
                 letter-spacing: 0.04em; width: 5.5rem;
                 flex-shrink: 0;
@@ -131,6 +131,43 @@
             * { scroll-behavior: auto !important; }
         }
 
+        /* Placeholders con contraste suficiente en modo claro
+           (el gris por defecto era casi ilegible sobre blanco) */
+        input::placeholder, textarea::placeholder {
+            color: #4b5563; opacity: 1;
+        }
+
+        /* ── Autocompletado del buscador por nombre ───────────
+           Panel anclado al buscador (posicionado por JS con
+           position:fixed para escapar del overflow-hidden de la
+           tarjeta de la tabla). */
+        #filter-sugerencias {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+            padding: 0.25rem 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        #filter-sugerencias li {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 0.75rem; padding: 0.5rem 0.75rem; min-height: 40px;
+            cursor: pointer; list-style: none;
+        }
+        #filter-sugerencias li:hover,
+        #filter-sugerencias li[aria-selected="true"] { background: #eef2ff; }
+        #filter-sugerencias li .sug-nombre {
+            min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            color: #1f2937;
+        }
+        #filter-sugerencias li[aria-selected="true"] .sug-nombre { color: #312e81; }
+        #filter-sugerencias li .sug-grupo {
+            flex-shrink: 0; font-size: 0.75rem; background: #f3f4f6; color: #374151;
+            border-radius: 9999px; padding: 0.125rem 0.5rem;
+        }
+        #filter-sugerencias li[aria-selected="true"] .sug-grupo { color: #1e1b4b; }
+
         /* ── Modo oscuro automático (sigue el sistema) ──────────
            Se ajustan los fondos y textos principales sin tocar las
            clases utilitarias, para no romper la maquetación. */
@@ -149,6 +186,17 @@
             /* Textos secundarios */
             .text-gray-500, .text-gray-600 { color: #94a3b8 !important; }
             .text-gray-700, .text-gray-800 { color: #cbd5e1 !important; }
+            .text-gray-900 { color: #f1f5f9 !important; }
+            /* Textos de color (estado, enlaces, botones): se
+               aclaran para mantener el contraste sobre fondo oscuro */
+            .text-green-600, .text-green-700 { color: #4ade80 !important; }
+            .text-amber-600, .text-amber-700 { color: #fbbf24 !important; }
+            .text-blue-600, .text-blue-700 { color: #60a5fa !important; }
+            .text-indigo-600 { color: #a5b4fc !important; }
+            .text-indigo-700, .text-indigo-800 { color: #c7d2fe !important; }
+            .text-red-700 { color: #fca5a5 !important; }
+            /* Etiquetas de las tarjetas de la tabla en móvil */
+            table.wikis-table td::before { color: #94a3b8 !important; }
             /* Cabecera de tabla y filas alternas */
             table.wikis-table thead tr { background-color: #0f172a !important; }
             table.wikis-table tbody tr { border-color: #334155 !important; }
@@ -158,12 +206,35 @@
                 color: #e2e8f0 !important;
                 border-color: #334155 !important;
             }
-            input::placeholder, textarea::placeholder { color: #64748b; }
+            input::placeholder, textarea::placeholder { color: #94a3b8; }
             select option { background-color: #1e293b; }
             /* Chips y badges claros */
             .bg-gray-100 { background-color: #334155 !important; }
+            .bg-gray-200 { background-color: #334155 !important; }
+            /* Tarjetas y botones que usan bg-white (barra de curso,
+               tabla, botón de rol activo…): en oscuro son gris azulado.
+               Los inputs se excluyen para mantener su fondo propio. */
+            .bg-white:not(input) { background-color: #1e293b !important; }
+            /* Hovers claros que desentonarían sobre fondo oscuro */
+            .hover\:bg-gray-100:hover, .hover\:bg-gray-300:hover,
+            .hover\:bg-blue-50:hover, .hover\:bg-red-50:hover { background-color: #334155 !important; }
+            .active\:bg-indigo-200:active,
+            .active\:bg-blue-100:active, .active\:bg-red-100:active { background-color: #4338ca !important; }
             .bg-indigo-50 { background-color: #312e81 !important; }
+            .bg-indigo-100 { background-color: #312e81 !important; }
             .border-indigo-100, .border-indigo-200 { border-color: #4338ca !important; }
+            /* Autocompletado del buscador */
+            #filter-sugerencias {
+                background-color: #1e293b !important;
+                border-color: #334155 !important;
+            }
+            #filter-sugerencias li:hover,
+            #filter-sugerencias li[aria-selected="true"] { background-color: #312e81 !important; }
+            #filter-sugerencias li .sug-nombre { color: #e2e8f0 !important; }
+            #filter-sugerencias li[aria-selected="true"] .sug-nombre { color: #e0e7ff !important; }
+            #filter-sugerencias li .sug-grupo {
+                background-color: #334155 !important; color: #cbd5e1 !important;
+            }
             /* Contenedor de campos de exportación (usa bg-gray-50) */
             #export-fields { background-color: #0f172a !important; }
             /* Hover de filas en tabla */
@@ -194,7 +265,7 @@
                         <!-- Chip de versión: se rellena con la del service worker -->
                         <span id="version-chip" class="hidden align-middle whitespace-nowrap text-xs font-mono font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 select-none">v…</span>
                     </h1>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1">Sincronizado con Google Sheets en tiempo real</p>
+                    <p class="text-xs sm:text-sm text-gray-600 mt-1">Sincronizado con Google Sheets en tiempo real</p>
                 </div>
 
                 <!-- Selector de Rol: segmento táctil de ancho completo en móvil -->
@@ -202,7 +273,7 @@
                     <button id="role-user" class="tap-target flex-1 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800" onclick="setRole('user')">
                         Modo Alumno
                     </button>
-                    <button id="role-admin" class="tap-target flex-1 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition" onclick="requestAdminAccess()">
+                    <button id="role-admin" class="tap-target flex-1 px-4 rounded-md font-medium text-gray-700 hover:text-gray-900 transition" onclick="requestAdminAccess()">
                         Modo Admin
                     </button>
                 </div>
@@ -213,7 +284,7 @@
                  (los muestra y oculta updateUIByRole). -->
             <div class="flex flex-col xs:flex-row gap-2 sm:gap-3 items-stretch">
                 <!-- Botón de Instalar PWA (aparece cuando el navegador lo permite) -->
-                <button id="btn-install" class="hidden flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-4 py-2 rounded-md font-medium transition tap-target">
+                <button id="btn-install" class="hidden flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white px-4 py-2 rounded-md font-medium transition tap-target">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     Instalar app
                 </button>
@@ -238,41 +309,43 @@
             <!-- Selector de Curso y Estado de Sincronización -->
             <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <div class="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-3 min-w-0">
-                    <label for="course-selector" class="font-semibold text-gray-700 text-sm xs:text-base">Curso Académico:</label>
+                    <label for="course-selector" class="font-semibold text-gray-900 text-sm xs:text-base">Curso Académico:</label>
                     <select id="course-selector" class="border-gray-300 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 font-medium w-full xs:w-auto" onchange="changeCourse()">
                         <!-- Se llenará dinámicamente -->
                     </select>
                 </div>
                 <div class="flex items-center gap-2 text-sm">
-                    <span id="sync-status" class="flex items-center gap-1 text-green-600 font-medium">
+                    <span id="sync-status" class="flex items-center gap-1 text-green-700 font-medium">
                         <span class="relative flex h-3 w-3">
                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                           <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                         </span>
                         Sincronizado
                     </span>
-                    <span id="last-sync-time" class="text-gray-400 text-xs ml-2"></span>
+                    <span id="last-sync-time" class="text-gray-600 text-xs ml-2"></span>
                 </div>
             </div>
 
             <!-- Formulario de Añadir -->
             <div id="add-form-container" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                <h2 class="text-lg font-semibold mb-4 text-gray-800" id="form-title">Añadir nueva Wiki</h2>
+                <h2 class="text-lg font-semibold mb-2 text-gray-900" id="form-title">Añadir nueva Wiki</h2>
+                <!-- Texto de ayuda según el rol (lo ajusta updateUIByRole) -->
+                <p id="form-hint" class="text-sm text-gray-600 mb-4"></p>
                 <form id="wiki-form" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
                     <div class="md:col-span-4">
-                        <label for="input-nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Alumno</label>
+                        <label for="input-nombre" class="block text-sm font-medium text-gray-900 mb-1">Nombre del Alumno</label>
                         <input type="text" id="input-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. Ana García">
                     </div>
                     <div class="md:col-span-3">
-                        <label for="input-grupo" class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
-                        <input type="text" id="input-grupo" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. 1ºA">
+                        <label for="input-grupo" class="block text-sm font-medium text-gray-900 mb-1">Grupo</label>
+                        <input type="text" id="input-grupo" list="grupos-existentes" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. 1ºA">
                     </div>
                     <div class="md:col-span-5">
-                        <label for="input-url" class="block text-sm font-medium text-gray-700 mb-1">URL de la Wiki</label>
+                        <label for="input-url" class="block text-sm font-medium text-gray-900 mb-1">URL de la Wiki</label>
                         <input type="url" id="input-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://sites.google.com/...">
                     </div>
                     <div class="md:col-span-10">
-                        <label for="input-notas" class="block text-sm font-medium text-gray-700 mb-1">Notas / Observaciones</label>
+                        <label for="input-notas" class="block text-sm font-medium text-gray-900 mb-1">Notas / Observaciones</label>
                         <input type="text" id="input-notas" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opcional...">
                     </div>
                     <div class="md:col-span-2 flex items-end">
@@ -288,9 +361,9 @@
                 <!-- Barra de filtros: nombre del alumno y grupo -->
                 <div class="p-3 sm:p-4 border-b border-gray-100 flex flex-col gap-3">
                     <div class="relative flex-1">
-                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="search" id="filter-nombre" oninput="applyFilters()" autocomplete="off" enterkeyhint="search" class="w-full border-gray-300 border rounded-lg pl-9 pr-9 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Filtrar por nombre del alumno...">
-                        <button type="button" id="filter-clear" onclick="clearNameFilter()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                        <svg class="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="search" id="filter-nombre" oninput="applyFilters()" onkeydown="teclasSugerencias(event)" onblur="cerrarSugerencias()" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="filter-sugerencias" aria-autocomplete="list" class="w-full border-gray-300 border rounded-lg pl-9 pr-9 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Filtrar por nombre del alumno...">
+                        <button type="button" id="filter-clear" onclick="clearNameFilter()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 rounded" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
@@ -299,24 +372,24 @@
                             <option value="">Todos los grupos</option>
                         </select>
                         <button type="button" id="btn-reset-filters" onclick="resetFilters()" class="hidden whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800 font-medium px-3 py-2.5 tap-target">Limpiar filtros</button>
-                        <span id="filter-count" class="text-sm text-gray-500 whitespace-nowrap sm:ml-auto"></span>
+                        <span id="filter-count" class="text-sm text-gray-600 whitespace-nowrap sm:ml-auto"></span>
                     </div>
                 </div>
                 <div class="table-container">
                     <table class="wikis-table w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-200">
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Alumno</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Grupo</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Enlace a la Wiki</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Notas</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-600">Fecha</th>
-                                <th id="th-actions" class="py-3 px-4 font-semibold text-sm text-gray-600 text-right hidden">Acciones</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Alumno</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Grupo</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Enlace a la Wiki</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Notas</th>
+                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Fecha</th>
+                                <th id="th-actions" class="py-3 px-4 font-semibold text-sm text-gray-800 text-right hidden">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="table-body" class="divide-y divide-gray-100">
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-gray-500">Cargando datos...</td>
+                                <td colspan="6" class="py-8 text-center text-gray-600">Cargando datos...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -333,25 +406,25 @@
             <form id="edit-form" onsubmit="handleEditSubmit(event)">
                 <input type="hidden" id="edit-id">
                 <div class="mb-4">
-                    <label for="edit-curso" class="block text-sm font-medium text-gray-700 mb-1">Curso</label>
+                    <label for="edit-curso" class="block text-sm font-medium text-gray-900 mb-1">Curso</label>
                     <select id="edit-curso" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"></select>
                 </div>
                 <div class="mb-4 grid grid-cols-3 gap-3">
                     <div class="col-span-2">
-                        <label for="edit-nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                        <label for="edit-nombre" class="block text-sm font-medium text-gray-900 mb-1">Nombre</label>
                         <input type="text" id="edit-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div>
-                        <label for="edit-grupo" class="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
-                        <input type="text" id="edit-grupo" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="edit-grupo" class="block text-sm font-medium text-gray-900 mb-1">Grupo</label>
+                        <input type="text" id="edit-grupo" list="grupos-existentes" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                 </div>
                 <div class="mb-4">
-                    <label for="edit-url" class="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                    <label for="edit-url" class="block text-sm font-medium text-gray-900 mb-1">URL</label>
                     <input type="url" id="edit-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div class="mb-6">
-                    <label for="edit-notas" class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    <label for="edit-notas" class="block text-sm font-medium text-gray-900 mb-1">Notas</label>
                     <textarea id="edit-notas" rows="2" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
                 <div class="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -370,12 +443,12 @@
             <div id="export-summary" class="mb-4 text-sm bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-lg px-3 py-2"></div>
             
             <div class="space-y-1 mb-6 bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200" id="export-fields">
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="curso" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Curso Académico</span></label>
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="nombre" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Nombre del Alumno</span></label>
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="grupo" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Grupo</span></label>
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="url" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">URL de la Wiki</span></label>
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="notas" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Notas / Observaciones</span></label>
-                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="fecha" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-700 font-medium">Fecha de creación</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="curso" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">Curso Académico</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="nombre" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">Nombre del Alumno</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="grupo" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">Grupo</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="url" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">URL de la Wiki</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="notas" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">Notas / Observaciones</span></label>
+                <label class="flex items-center gap-3 cursor-pointer py-2"><input type="checkbox" value="fecha" checked class="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"> <span class="text-gray-900 font-medium">Fecha de creación</span></label>
             </div>
             
             <div class="flex flex-col-reverse sm:flex-row sm:flex-wrap justify-end gap-2">
@@ -403,15 +476,26 @@
         </div>
     </div>
 
-    <!-- Modal Cambio de Contraseña -->
+    <!-- Modal Cambio de Contraseña (solo admin): la nueva
+         contraseña se escribe DOS veces para evitar errores -->
     <div id="change-pwd-modal" class="fixed inset-0 bg-black/50 hidden flex items-end sm:items-center justify-center z-50 fade-in p-0 sm:px-4">
-        <div class="modal-card bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-sm p-5 sm:p-6 text-center">
-            <h2 class="text-xl font-bold mb-4">Cambiar Contraseña</h2>
-            <input type="password" id="new-password-input" autocomplete="new-password" placeholder="Nueva contraseña" enterkeyhint="done" onkeydown="if(event.key==='Enter'){event.preventDefault();executeChangePassword();}" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 mb-4 text-center outline-none focus:ring-2 focus:ring-indigo-500">
-            <div class="flex flex-col-reverse sm:flex-row justify-center gap-2">
-                <button onclick="document.getElementById('change-pwd-modal').classList.add('hidden')" class="tap-target px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
-                <button onclick="executeChangePassword()" id="btn-change-pwd" class="tap-target px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white rounded-lg transition font-medium">Guardar</button>
-            </div>
+        <div class="modal-card bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-sm p-5 sm:p-6">
+            <h2 class="text-xl font-bold mb-4 text-center">Cambiar Contraseña</h2>
+            <form id="change-pwd-form" onsubmit="event.preventDefault(); executeChangePassword();">
+                <div class="mb-4">
+                    <label for="new-password-input" class="block text-sm font-medium text-gray-900 mb-1">Nueva contraseña</label>
+                    <input type="password" id="new-password-input" autocomplete="new-password" placeholder="Escribe la nueva contraseña" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('confirm-password-input').focus();}" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="mb-4">
+                    <label for="confirm-password-input" class="block text-sm font-medium text-gray-900 mb-1">Repite la nueva contraseña</label>
+                    <input type="password" id="confirm-password-input" autocomplete="new-password" placeholder="Escríbela otra vez para confirmarla" enterkeyhint="done" oninput="comprobarCoincidencia()" onkeydown="if(event.key==='Enter'){event.preventDefault();executeChangePassword();}" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p id="pwd-coincidencia" class="hidden text-xs mt-1.5 font-medium" aria-live="polite"></p>
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row justify-center gap-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="tap-target px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg transition">Cancelar</button>
+                    <button type="submit" id="btn-change-pwd" class="tap-target px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-lg transition font-medium">Guardar</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -419,7 +503,11 @@
         // Variables globales (AQUÍ DEBES PEGAR TU URL DE GOOGLE APPS SCRIPT)
         let gasUrl = 'https://script.google.com/macros/s/AKfycbxkCcpb8SkeXhSfk1gSi0jnHiKRC2lQaXSP_BNXX_RXn5ry4hxfVhKs7-0S2K2tCh_ONA/exec'; 
         
-        let currentRole = 'user'; 
+        let currentRole = 'user';
+        // Contraseña de admin de la sesión: se pide al entrar en
+        // modo admin y se envía con las operaciones protegidas
+        // (editar, borrar y cambiar la contraseña)
+        let adminPwd = '';
         let currentCourse = '';
         let selectedCourse = '';
         let wikisData = [];
@@ -442,8 +530,10 @@
             // Mostrar la interfaz principal directamente
             document.getElementById('main-content').classList.remove('hidden');
             
-            // CORRECCIÓN AQUÍ: Solo comprobamos que sea una URL válida de Google
-            if (gasUrl && gasUrl.startsWith('https://script.google.com/')) {
+            // Se requiere una URL de backend válida (http/https):
+            // la de producción (Apps Script) o la de un servidor local
+            // de pruebas que la inyecte
+            if (gasUrl && /^https?:\/\//.test(gasUrl)) {
                 fetchData();
                 startRealtimeSync();
             } else {
@@ -559,11 +649,28 @@
             }
         }
 
-        // Se llama al escribir en el buscador o al cambiar el desplegable
-        function applyFilters() {
+        // Grupos existentes (de todos los cursos) como sugerencias de los
+        // campos "Grupo" del formulario de alta y del modal de edición
+        function rellenarDatalistGrupos() {
+            let datalist = document.getElementById('grupos-existentes');
+            if (!datalist) {
+                datalist = document.createElement('datalist');
+                datalist.id = 'grupos-existentes';
+                document.body.appendChild(datalist);
+            }
+            const grupos = [...new Set(wikisData.map(w => (w.grupo || '').trim()).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+            datalist.innerHTML = grupos.map(g => `<option value="${escapeHtml(g)}"></option>`).join('');
+        }
+
+        // Se llama al escribir en el buscador o al cambiar el desplegable.
+        // conSugerencias=false evita reabrir el panel justo después de
+        // elegir una sugerencia (el filtro sí se aplica).
+        function applyFilters(conSugerencias) {
             filtroNombre = document.getElementById('filter-nombre').value;
             filtroGrupo = document.getElementById('filter-grupo').value;
             renderTable();
+            if (conSugerencias !== false) renderSugerencias();
         }
 
         function clearNameFilter() {
@@ -579,6 +686,123 @@
             applyFilters();
         }
 
+        // ═══ AUTOCOMPLETADO DEL BUSCADOR ═══
+        // Mientras se escribe, se ofrecen los alumnos del curso cuyo
+        // nombre contiene lo tecleado (con el mismo criterio del filtrado:
+        // sin mayúsculas ni acentos, todos los términos). Flechas ↑↓ para
+        // moverse por la lista, Enter o clic para elegir, Esc para cerrar.
+        let sugAbiertas = false;
+        let sugIndice = -1;
+        let sugItems = [];
+        const SUGERENCIAS_MAX = 8;
+
+        function renderSugerencias() {
+            const input = document.getElementById('filter-nombre');
+            const texto = input.value;
+            if (!texto.trim()) { cerrarSugerencias(); return; }
+
+            // Nombres únicos del curso que contienen todos los términos
+            const tokens = normalizar(texto).split(/\s+/).filter(Boolean);
+            const vistos = new Set();
+            sugItems = getDatosCurso()
+                .filter(item => {
+                    const nombre = normalizar(item.nombre);
+                    if (!tokens.every(t => nombre.includes(t))) return false;
+                    if (vistos.has(item.nombre)) return false;
+                    vistos.add(item.nombre);
+                    return true;
+                })
+                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+                .slice(0, SUGERENCIAS_MAX);
+
+            if (sugItems.length === 0) { cerrarSugerencias(); return; }
+
+            let panel = document.getElementById('filter-sugerencias');
+            if (!panel) {
+                panel = document.createElement('ul');
+                panel.id = 'filter-sugerencias';
+                panel.setAttribute('role', 'listbox');
+                panel.className = 'fixed z-40 hidden';
+                document.body.appendChild(panel);
+            }
+            panel.innerHTML = sugItems.map((s, i) => `
+                <li role="option" id="sug-opt-${i}" aria-selected="false">
+                    <span class="sug-nombre">${escapeHtml(s.nombre)}</span>
+                    ${s.grupo ? `<span class="sug-grupo">${escapeHtml(s.grupo)}</span>` : ''}
+                </li>`).join('');
+            [...panel.children].forEach((li, i) => {
+                li.addEventListener('mousedown', (ev) => {
+                    ev.preventDefault(); // evita el blur del buscador
+                    elegirSugerencia(i);
+                });
+            });
+
+            // Anclado bajo el buscador: position:fixed para escapar del
+            // overflow-hidden de la tarjeta que contiene la tabla
+            const rect = input.getBoundingClientRect();
+            panel.style.left = rect.left + 'px';
+            panel.style.top = (rect.bottom + 4) + 'px';
+            panel.style.width = rect.width + 'px';
+
+            sugAbiertas = true;
+            sugIndice = -1;
+            input.setAttribute('aria-expanded', 'true');
+            panel.classList.remove('hidden');
+        }
+
+        function cerrarSugerencias() {
+            const panel = document.getElementById('filter-sugerencias');
+            if (panel) panel.classList.add('hidden');
+            sugAbiertas = false;
+            sugIndice = -1;
+            const input = document.getElementById('filter-nombre');
+            if (input) {
+                input.setAttribute('aria-expanded', 'false');
+                input.removeAttribute('aria-activedescendant');
+            }
+        }
+
+        function elegirSugerencia(i) {
+            const input = document.getElementById('filter-nombre');
+            input.value = sugItems[i].nombre;
+            cerrarSugerencias();
+            applyFilters(false); // filtra sin reabrir el panel
+            input.focus();
+        }
+
+        function marcarSugerencia(nuevoIndice) {
+            const panel = document.getElementById('filter-sugerencias');
+            if (!panel) return;
+            const opciones = [...panel.children];
+            sugIndice = (nuevoIndice + opciones.length) % opciones.length;
+            opciones.forEach((li, j) => {
+                li.setAttribute('aria-selected', String(j === sugIndice));
+                if (j === sugIndice) {
+                    li.scrollIntoView({ block: 'nearest' });
+                    document.getElementById('filter-nombre').setAttribute('aria-activedescendant', li.id);
+                }
+            });
+        }
+
+        function teclasSugerencias(ev) {
+            if (!sugAbiertas) return;
+            if (ev.key === 'ArrowDown') { ev.preventDefault(); marcarSugerencia(sugIndice + 1); }
+            else if (ev.key === 'ArrowUp') { ev.preventDefault(); marcarSugerencia(sugIndice - 1); }
+            else if (ev.key === 'Enter' && sugIndice >= 0) { ev.preventDefault(); elegirSugerencia(sugIndice); }
+            else if (ev.key === 'Escape') { cerrarSugerencias(); }
+        }
+
+        // Cerrar el panel al hacer clic fuera o al desplazar la página
+        document.addEventListener('click', (ev) => {
+            const panel = document.getElementById('filter-sugerencias');
+            if (panel && !panel.contains(ev.target) && ev.target !== document.getElementById('filter-nombre')) cerrarSugerencias();
+        });
+        document.addEventListener('scroll', (ev) => {
+            const panel = document.getElementById('filter-sugerencias');
+            if (panel && !panel.contains(ev.target)) cerrarSugerencias();
+        }, true);
+        window.addEventListener('resize', cerrarSugerencias);
+
         // Descripción legible de los filtros activos (exportaciones)
         function descripcionFiltros() {
             const partes = [`Curso ${selectedCourse}`];
@@ -591,15 +815,17 @@
         // --- ROLES Y SEGURIDAD ---
         function setRole(role) {
             currentRole = role;
+            // Al salir del modo admin se descarta la contraseña
+            if (role !== 'admin') adminPwd = '';
             const btnUser = document.getElementById('role-user');
             const btnAdmin = document.getElementById('role-admin');
             
             if (role === 'user') {
                 btnUser.className = "flex-1 py-1.5 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800";
-                btnAdmin.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition";
+                btnAdmin.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-700 hover:text-gray-900 transition";
             } else {
                 btnAdmin.className = "flex-1 py-1.5 px-4 rounded-md font-medium bg-white shadow-sm text-gray-800";
-                btnUser.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-500 hover:text-gray-800 transition";
+                btnUser.className = "flex-1 py-1.5 px-4 rounded-md font-medium text-gray-700 hover:text-gray-900 transition";
             }
 
             updateUIByRole();
@@ -624,6 +850,7 @@
                 const res = await fetch(gasUrl, { method: 'POST', body: formData });
                 const json = await res.json();
                 if (json.success) {
+                    adminPwd = pwd; // acredita las operaciones de admin
                     document.getElementById('password-modal').classList.add('hidden');
                     setRole('admin');
                     showMessage("Acceso administrador concedido");
@@ -640,12 +867,36 @@
 
         function openChangePasswordModal() {
             document.getElementById('new-password-input').value = '';
+            document.getElementById('confirm-password-input').value = '';
+            document.getElementById('pwd-coincidencia').classList.add('hidden');
             document.getElementById('change-pwd-modal').classList.remove('hidden');
+            document.getElementById('new-password-input').focus();
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('change-pwd-modal').classList.add('hidden');
+        }
+
+        // Aviso en vivo de si las dos contraseñas coinciden
+        function comprobarCoincidencia() {
+            const hint = document.getElementById('pwd-coincidencia');
+            const nueva = document.getElementById('new-password-input').value;
+            const repite = document.getElementById('confirm-password-input').value;
+            if (!nueva || !repite) { hint.classList.add('hidden'); return; }
+            if (nueva === repite) {
+                hint.textContent = "✓ Las contraseñas coinciden";
+                hint.className = "text-xs mt-1.5 font-medium text-green-700";
+            } else {
+                hint.textContent = "Las contraseñas no coinciden";
+                hint.className = "text-xs mt-1.5 font-medium text-red-600";
+            }
         }
 
         async function executeChangePassword() {
-            const newPwd = document.getElementById('new-password-input').value;
-            if(!newPwd) return showMessage("Introduce una contraseña válida", "error");
+            const nueva = document.getElementById('new-password-input').value;
+            const repite = document.getElementById('confirm-password-input').value;
+            if (!nueva) return showMessage("Introduce la nueva contraseña", "error");
+            if (nueva !== repite) return showMessage("Las dos contraseñas no coinciden: compruébalas", "error");
 
             const btn = document.getElementById('btn-change-pwd');
             btn.disabled = true;
@@ -653,16 +904,18 @@
 
             const formData = new URLSearchParams();
             formData.append('action', 'change_password');
-            formData.append('new_password', newPwd);
+            formData.append('new_password', nueva);
+            formData.append('password', adminPwd); // la actual acredita al admin
 
             try {
                 const res = await fetch(gasUrl, { method: 'POST', body: formData });
                 const json = await res.json();
                 if (json.success) {
-                    document.getElementById('change-pwd-modal').classList.add('hidden');
+                    adminPwd = nueva; // sigue acreditado tras el cambio
+                    closeChangePasswordModal();
                     showMessage("Contraseña cambiada correctamente");
                 } else {
-                    showMessage("Error al cambiar contraseña", "error");
+                    showMessage("Error al cambiar la contraseña: " + (json.error || "respuesta no válida"), "error");
                 }
             } catch (e) {
                 showMessage("Error de red", "error");
@@ -677,21 +930,23 @@
             const thActions = document.getElementById('th-actions');
             const btnExport = document.getElementById('btn-export');
             const btnPassword = document.getElementById('btn-password');
+            const hint = document.getElementById('form-hint');
 
-            // El formulario de añadir, la columna de acciones, el botón de
-            // exportar y el de cambiar contraseña solo están disponibles para
-            // el administrador. El modo "Alumno" es de solo lectura
-            // (visualiza los enlaces del curso seleccionado).
+            // El formulario de añadir está disponible para TODOS los roles:
+            // cualquier usuario puede dar de alta su wiki. En cambio, la
+            // columna de acciones (editar/borrar), el botón de exportar y
+            // el de cambiar contraseña son exclusivos del administrador.
+            addFormContainer.classList.remove('hidden');
             if (currentRole === 'admin') {
-                addFormContainer.classList.remove('hidden');
                 thActions.classList.remove('hidden');
                 btnExport.classList.remove('hidden');
                 btnPassword.classList.remove('hidden');
+                if (hint) hint.textContent = 'Como administrador puedes además editar o borrar las wikis existentes con los botones de la columna «Acciones».';
             } else {
-                addFormContainer.classList.add('hidden');
                 thActions.classList.add('hidden');
                 btnExport.classList.add('hidden');
                 btnPassword.classList.add('hidden');
+                if (hint) hint.textContent = 'Cualquier usuario puede añadir su wiki a la lista. Para corregir o eliminar un registro existente, contacta con el administrador.';
             }
 
             renderTable();
@@ -703,19 +958,19 @@
             const syncUI = document.getElementById('sync-status');
             if (status) {
                 syncUI.innerHTML = `<span class="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full inline-block"></span> Actualizando...`;
-                syncUI.className = "flex items-center gap-1 text-blue-600 font-medium";
+                syncUI.className = "flex items-center gap-1 text-blue-700 font-medium";
             } else if (offlineMode) {
                 syncUI.innerHTML = `
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M8.5 16.5a5 5 0 017.03 0M5 13a10 10 0 013.16-2.13M19 13a10 10 0 00-2.42-1.81M2 8.82a15 15 0 015.17-2.94M22 8.82a15 15 0 00-9.94-3.28M12 20h.01"></path></svg>
                     Sin conexión`;
-                syncUI.className = "flex items-center gap-1 text-amber-600 font-medium";
+                syncUI.className = "flex items-center gap-1 text-amber-700 font-medium";
             } else {
                 syncUI.innerHTML = `
                     <span class="relative flex h-3 w-3">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span> Sincronizado`;
-                syncUI.className = "flex items-center gap-1 text-green-600 font-medium";
+                syncUI.className = "flex items-center gap-1 text-green-700 font-medium";
                 const d = new Date();
                 document.getElementById('last-sync-time').innerText = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
             }
@@ -730,6 +985,7 @@
                 if (result.success) {
                     wikisData = result.data;
                     populateGroupFilter();
+                    rellenarDatalistGrupos();
                     guardarDatosLocales();
                     if (offlineMode) salirModoOffline();
                     renderTable();
@@ -765,6 +1021,7 @@
             if (datos && datos.length > 0) {
                 wikisData = datos;
                 populateGroupFilter();
+                rellenarDatalistGrupos();
                 renderTable();
                 if (primeraVez) showMessage("Sin conexión: mostrando los datos de la última sesión", "error");
             } else if (primeraVez) {
@@ -782,11 +1039,6 @@
         async function handleFormSubmit(e) {
             e.preventDefault();
             if (!gasUrl) return;
-            // Solo el administrador puede crear enlaces.
-            if (currentRole !== 'admin') {
-                showMessage("Necesitas acceso de administrador para añadir enlaces", "error");
-                return;
-            }
 
             const btn = document.getElementById('btn-submit');
             btn.disabled = true;
@@ -830,7 +1082,7 @@
                 <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:px-4 fade-in">
                     <div class="modal-card bg-white p-5 sm:p-6 rounded-t-2xl sm:rounded-xl shadow-xl max-w-sm w-full text-center">
                         <h3 class="text-lg font-bold mb-2 text-gray-800">¿Estás seguro?</h3>
-                        <p class="text-sm text-gray-500 mb-6">Esta acción no se puede deshacer.</p>
+                        <p class="text-sm text-gray-600 mb-6">Esta acción no se puede deshacer.</p>
                         <div class="flex flex-col-reverse sm:flex-row justify-center gap-3">
                             <button onclick="document.getElementById('confirm-modal').remove()" class="tap-target px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition">Cancelar</button>
                             <button onclick="executeDelete('${id}'); document.getElementById('confirm-modal').remove()" class="tap-target px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 active:bg-red-800 transition">Eliminar</button>
@@ -850,6 +1102,7 @@
             const formData = new URLSearchParams();
             formData.append('action', 'delete');
             formData.append('id', id);
+            formData.append('password', adminPwd);
 
             try {
                 const response = await fetch(gasUrl, { method: 'POST', body: formData });
@@ -870,6 +1123,11 @@
 
         // --- EDITAR WIKI ---
         function openEditModal(id) {
+            // Solo el administrador puede editar las wikis existentes
+            if (currentRole !== 'admin') {
+                showMessage("Solo el administrador puede editar las wikis existentes", "error");
+                return;
+            }
             const item = wikisData.find(w => w.id === id);
             if (!item) return;
             
@@ -913,6 +1171,7 @@
             formData.append('grupo', grupo);
             formData.append('url', url);
             formData.append('notas', notas);
+            formData.append('password', adminPwd);
 
             try {
                 const response = await fetch(gasUrl, { method: 'POST', body: formData });
@@ -1075,8 +1334,8 @@
 
             if (filteredData.length === 0) {
                 tbody.innerHTML = (datosCurso.length === 0)
-                    ? `<tr><td colspan="6" class="py-12 text-center text-gray-500">No hay wikis registradas para el curso ${selectedCourse}</td></tr>`
-                    : `<tr><td colspan="6" class="py-12 text-center text-gray-500">Ninguna wiki del curso ${selectedCourse} coincide con los filtros aplicados</td></tr>`;
+                    ? `<tr><td colspan="6" class="py-12 text-center text-gray-600">No hay wikis registradas para el curso ${selectedCourse}</td></tr>`
+                    : `<tr><td colspan="6" class="py-12 text-center text-gray-600">Ninguna wiki del curso ${selectedCourse} coincide con los filtros aplicados</td></tr>`;
                 return;
             }
 
@@ -1119,7 +1378,7 @@
                         </a>
                     </td>
                     <td data-label="Notas" class="py-3 px-4 text-gray-600 max-w-xs truncate" title="${item.notas || ''}">${item.notas || '-'}</td>
-                    <td data-label="Fecha" class="py-3 px-4 text-gray-500 text-sm">${dateStr}</td>
+                    <td data-label="Fecha" class="py-3 px-4 text-gray-600 text-sm">${dateStr}</td>
                     ${actionsHtml}
                 `;
                 tbody.appendChild(tr);
@@ -1142,7 +1401,7 @@
         }
 
         function showMessage(msg, type="info") {
-            const color = type === "error" ? "bg-red-500" : "bg-green-500";
+            const color = type === "error" ? "bg-red-600" : "bg-green-700";
             // Reemplaza cualquier toast anterior para que no se solapen
             const previo = document.getElementById('toast-msg');
             if (previo) previo.remove();
