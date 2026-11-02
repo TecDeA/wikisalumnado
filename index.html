@@ -137,6 +137,40 @@
             color: #4b5563; opacity: 1;
         }
 
+        /* ── Acordeones de secciones (Añadir / Listado) ────────
+           La cabecera de la tarjeta pliega y despliega su
+           contenido. La animación transiciona grid-template-rows
+           (0fr → 1fr), que no exige medir alturas; el contenido
+           replegado lleva inert para que el foco por teclado no
+           entre en él. */
+        .acordeon-header {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.75rem; width: 100%; padding: 1rem;
+            font: inherit; color: inherit; text-align: left;
+            border: none; background: transparent; cursor: pointer;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        @media (min-width: 640px) {
+            .acordeon-header { padding: 1.25rem 1.5rem; }
+        }
+        .acordeon-header:hover { background-color: #f9fafb; }
+        .acordeon-header:focus-visible {
+            outline: 2px solid #6366f1; outline-offset: -2px;
+        }
+        .acordeon-chevron { transition: transform 0.25s ease; }
+        .acordeon-header[aria-expanded="true"] .acordeon-chevron {
+            transform: rotate(180deg);
+        }
+        .acordeon-body {
+            display: grid; grid-template-rows: 0fr;
+            transition: grid-template-rows 0.3s ease;
+        }
+        .acordeon-body.abierto { grid-template-rows: 1fr; }
+        .acordeon-body > .acordeon-inner { overflow: hidden; min-height: 0; }
+        @media (prefers-reduced-motion: reduce) {
+            .acordeon-body, .acordeon-chevron { transition: none; }
+        }
+
         /* ── Autocompletado del buscador por nombre ───────────
            Panel anclado al buscador (posicionado por JS con
            position:fixed para escapar del overflow-hidden de la
@@ -237,6 +271,8 @@
             }
             /* Contenedor de campos de exportación (usa bg-gray-50) */
             #export-fields { background-color: #0f172a !important; }
+            /* Cabeceras de los acordeones (hover claro → azululado) */
+            .acordeon-header:hover { background-color: #1e293b; }
             /* Hover de filas en tabla */
             table.wikis-table tbody tr:hover { background-color: #1e293b !important; }
             /* Mantener vivos los acentos de color (indigo, verde, rojo) */
@@ -326,73 +362,102 @@
                 </div>
             </div>
 
-            <!-- Formulario de Añadir -->
-            <div id="add-form-container" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-                <h2 class="text-lg font-semibold mb-2 text-gray-900" id="form-title">Añadir nueva Wiki</h2>
-                <!-- Texto de ayuda según el rol (lo ajusta updateUIByRole) -->
-                <p id="form-hint" class="text-sm text-gray-600 mb-4"></p>
-                <form id="wiki-form" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-                    <div class="md:col-span-4">
-                        <label for="input-nombre" class="block text-sm font-medium text-gray-900 mb-1">Nombre del Alumno</label>
-                        <input type="text" id="input-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. Ana García">
-                    </div>
-                    <div class="md:col-span-3">
-                        <label for="input-grupo" class="block text-sm font-medium text-gray-900 mb-1">Grupo</label>
-                        <input type="text" id="input-grupo" list="grupos-existentes" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. 1ºA">
-                    </div>
-                    <div class="md:col-span-5">
-                        <label for="input-url" class="block text-sm font-medium text-gray-900 mb-1">URL de la Wiki</label>
-                        <input type="url" id="input-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://sites.google.com/...">
-                    </div>
-                    <div class="md:col-span-10">
-                        <label for="input-notas" class="block text-sm font-medium text-gray-900 mb-1">Notas / Observaciones</label>
-                        <input type="text" id="input-notas" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opcional...">
-                    </div>
-                    <div class="md:col-span-2 flex items-end">
-                        <button type="submit" id="btn-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium py-2.5 px-4 rounded-lg transition shadow-sm tap-target">
-                            Guardar
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Tabla de Datos -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <!-- Barra de filtros: nombre del alumno y grupo -->
-                <div class="p-3 sm:p-4 border-b border-gray-100 flex flex-col gap-3">
-                    <div class="relative flex-1">
-                        <svg class="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="search" id="filter-nombre" oninput="applyFilters()" onkeydown="teclasSugerencias(event)" onblur="cerrarSugerencias()" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="filter-sugerencias" aria-autocomplete="list" class="w-full border-gray-300 border rounded-lg pl-9 pr-9 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Filtrar por nombre del alumno...">
-                        <button type="button" id="filter-clear" onclick="clearNameFilter()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 rounded" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <select id="filter-grupo" onchange="applyFilters()" class="border-gray-300 border rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium flex-1 sm:flex-none min-w-0">
-                            <option value="">Todos los grupos</option>
-                        </select>
-                        <button type="button" id="btn-reset-filters" onclick="resetFilters()" class="hidden whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800 font-medium px-3 py-2.5 tap-target">Limpiar filtros</button>
-                        <span id="filter-count" class="text-sm text-gray-600 whitespace-nowrap sm:ml-auto"></span>
+            <!-- Formulario de Añadir: acordeón desplegable, replegado
+                 por defecto (se abre pulsando la cabecera de la tarjeta) -->
+            <div id="add-form-container" class="bg-white rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-lg font-semibold text-gray-900" id="form-title">
+                    <button type="button" id="btn-toggle-add" class="acordeon-header tap-target" aria-expanded="false" aria-controls="acordeon-add" onclick="toggleAcordeon('add')">
+                        <span class="min-w-0">Añadir nueva Wiki</span>
+                        <svg class="acordeon-chevron w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </h2>
+                <div id="acordeon-add" class="acordeon-body" inert>
+                    <div class="acordeon-inner">
+                        <div class="border-t border-gray-100 p-4 sm:p-6">
+                            <!-- Texto de ayuda según el rol (lo ajusta updateUIByRole) -->
+                            <p id="form-hint" class="text-sm text-gray-600 mb-4"></p>
+                            <form id="wiki-form" onsubmit="handleFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+                                <div class="md:col-span-4">
+                                    <label for="input-nombre" class="block text-sm font-medium text-gray-900 mb-1">Nombre del Alumno</label>
+                                    <input type="text" id="input-nombre" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. Ana García">
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label for="input-grupo" class="block text-sm font-medium text-gray-900 mb-1">Grupo</label>
+                                    <input type="text" id="input-grupo" list="grupos-existentes" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej. 1ºA">
+                                </div>
+                                <div class="md:col-span-5">
+                                    <label for="input-url" class="block text-sm font-medium text-gray-900 mb-1">URL de la Wiki</label>
+                                    <input type="url" id="input-url" required class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="https://sites.google.com/...">
+                                </div>
+                                <div class="md:col-span-10">
+                                    <label for="input-notas" class="block text-sm font-medium text-gray-900 mb-1">Notas / Observaciones</label>
+                                    <input type="text" id="input-notas" class="w-full border-gray-300 border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Opcional...">
+                                </div>
+                                <div class="md:col-span-2 flex items-end">
+                                    <button type="submit" id="btn-submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium py-2.5 px-4 rounded-lg transition shadow-sm tap-target">
+                                        Guardar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <div class="table-container">
-                    <table class="wikis-table w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-50 border-b border-gray-200">
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Alumno</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Grupo</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Enlace a la Wiki</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Notas</th>
-                                <th class="py-3 px-4 font-semibold text-sm text-gray-800">Fecha</th>
-                                <th id="th-actions" class="py-3 px-4 font-semibold text-sm text-gray-800 text-right hidden">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="divide-y divide-gray-100">
-                            <tr>
-                                <td colspan="6" class="py-8 text-center text-gray-600">Cargando datos...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            </div>
+
+            <!-- Tabla de Datos: acordeón desplegable con título,
+                 replegado por defecto. El chip de la cabecera muestra
+                 el número de resultados aunque la sección esté plegada. -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <h2 class="text-lg font-semibold text-gray-900" id="tabla-title">
+                    <button type="button" id="btn-toggle-tabla" class="acordeon-header tap-target" aria-expanded="false" aria-controls="acordeon-tabla" onclick="toggleAcordeon('tabla')">
+                        <span class="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                            <span>Listado de wikis</span>
+                            <span id="tabla-count-chip" class="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 rounded-full px-2 py-0.5 select-none whitespace-nowrap"></span>
+                        </span>
+                        <svg class="acordeon-chevron w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </h2>
+                <div id="acordeon-tabla" class="acordeon-body" inert>
+                    <div class="acordeon-inner">
+                        <div class="border-t border-gray-100">
+                        <!-- Barra de filtros: nombre del alumno y grupo -->
+                        <div class="p-3 sm:p-4 border-b border-gray-100 flex flex-col gap-3">
+                            <div class="relative flex-1">
+                                <svg class="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                <input type="search" id="filter-nombre" oninput="applyFilters()" onkeydown="teclasSugerencias(event)" onblur="cerrarSugerencias()" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="filter-sugerencias" aria-autocomplete="list" class="w-full border-gray-300 border rounded-lg pl-9 pr-9 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Filtrar por nombre del alumno...">
+                                <button type="button" id="filter-clear" onclick="clearNameFilter()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 rounded" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="filter-grupo" onchange="applyFilters()" class="border-gray-300 border rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-medium flex-1 sm:flex-none min-w-0">
+                                    <option value="">Todos los grupos</option>
+                                </select>
+                                <button type="button" id="btn-reset-filters" onclick="resetFilters()" class="hidden whitespace-nowrap text-sm text-indigo-600 hover:text-indigo-800 font-medium px-3 py-2.5 tap-target">Limpiar filtros</button>
+                                <span id="filter-count" class="text-sm text-gray-600 whitespace-nowrap sm:ml-auto"></span>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="wikis-table w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b border-gray-200">
+                                        <th class="py-3 px-4 font-semibold text-sm text-gray-800">Alumno</th>
+                                        <th class="py-3 px-4 font-semibold text-sm text-gray-800">Grupo</th>
+                                        <th class="py-3 px-4 font-semibold text-sm text-gray-800">Enlace a la Wiki</th>
+                                        <th class="py-3 px-4 font-semibold text-sm text-gray-800">Notas</th>
+                                        <th class="py-3 px-4 font-semibold text-sm text-gray-800">Fecha</th>
+                                        <th id="th-actions" class="py-3 px-4 font-semibold text-sm text-gray-800 text-right hidden">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body" class="divide-y divide-gray-100">
+                                    <tr>
+                                        <td colspan="6" class="py-8 text-center text-gray-600">Cargando datos...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -684,6 +749,21 @@
             document.getElementById('filter-nombre').value = '';
             document.getElementById('filter-grupo').value = '';
             applyFilters();
+        }
+
+        // ═══ ACORDEONES DE LAS SECCIONES ═══
+        // "Añadir nueva Wiki" y "Listado de wikis" se pliegan y despliegan
+        // desde la cabecera de su tarjeta. Ambas arrancan replegadas. El
+        // contenido plegado se marca con inert para que el tabulador y
+        // los lectores de pantalla no entren en él.
+        function toggleAcordeon(cual) {
+            const btn = document.getElementById('btn-toggle-' + cual);
+            const body = document.getElementById('acordeon-' + cual);
+            if (!btn || !body) return;
+            const abierto = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', String(!abierto));
+            body.classList.toggle('abierto', !abierto);
+            body.inert = abierto; // estaba abierto → se está replegando
         }
 
         // ═══ AUTOCOMPLETADO DEL BUSCADOR ═══
@@ -1403,6 +1483,18 @@
             count.textContent = hayFiltros
                 ? `${totalFiltrado} de ${totalCurso} resultado${totalFiltrado !== 1 ? 's' : ''}`
                 : `${totalCurso} resultado${totalCurso !== 1 ? 's' : ''}`;
+
+            // Chip de la cabecera del acordeón: resume el número de
+            // wikis aunque la sección del listado esté replegada
+            const chip = document.getElementById('tabla-count-chip');
+            if (chip) {
+                chip.textContent = hayFiltros
+                    ? `${totalFiltrado} de ${totalCurso}`
+                    : `${totalCurso}`;
+                chip.title = hayFiltros
+                    ? 'Resultados con los filtros aplicados'
+                    : 'Wikis registradas en el curso seleccionado';
+            }
 
             btnReset.classList.toggle('hidden', !hayFiltros);
             if (btnClear) btnClear.classList.toggle('hidden', filtroNombre.trim() === '');
