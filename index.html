@@ -1301,7 +1301,168 @@
             document.getElementById('export-modal').classList.add('hidden');
         }
 
-        function getExportHTMLContent() {
+        // ── Estilos del documento exportado ──
+        // El archivo exportado es autónomo: no depende de ningún
+        // recurso externo. Todas las clases llevan el prefijo "wexp-"
+        // para que, al inyectar este mismo fragmento en la página para
+        // generar el PDF, ningún estilo filtre a la interfaz de la
+        // aplicación. El modo oscuro solo se activa en el archivo HTML
+        // final (siguiendo el tema del sistema); el PDF se fuerza a
+        // modo claro con la clase "wexp-fijo-claro".
+        function getExportStyles() {
+            return `
+    body.wexp-body {
+        margin: 0;
+        padding: 36px 16px 64px;
+        background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 460px);
+    }
+    @media (prefers-color-scheme: dark) {
+        body.wexp-body { background: #0b1120; }
+    }
+    @page { margin: 12mm; }
+    @media print {
+        body.wexp-body { padding: 0; background: #ffffff; }
+        .wexp-tabla-card { box-shadow: none; }
+    }
+    .wexp-root {
+        --wexp-tarjeta: #ffffff;
+        --wexp-texto: #1e293b;
+        --wexp-texto-suave: #64748b;
+        --wexp-borde: #e2e8f0;
+        --wexp-fila-alterna: #f8fafc;
+        --wexp-hover: rgba(99, 102, 241, 0.06);
+        --wexp-cabecera: #eef2ff;
+        --wexp-acento: #4338ca;
+        --wexp-pill-fondo: rgba(99, 102, 241, 0.08);
+        --wexp-link-borde: rgba(67, 56, 202, 0.28);
+        --wexp-sombra: 0 1px 2px rgba(15, 23, 42, 0.05), 0 12px 32px rgba(15, 23, 42, 0.07);
+        max-width: 980px;
+        margin: 0 auto;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--wexp-texto);
+    }
+    @media (prefers-color-scheme: dark) {
+        .wexp-root:not(.wexp-fijo-claro) {
+            --wexp-tarjeta: #151f36;
+            --wexp-texto: #e2e8f0;
+            --wexp-texto-suave: #8b9bb4;
+            --wexp-borde: #2d3a54;
+            --wexp-fila-alterna: #1a2540;
+            --wexp-hover: rgba(165, 180, 252, 0.08);
+            --wexp-cabecera: #212e4d;
+            --wexp-acento: #a5b4fc;
+            --wexp-pill-fondo: rgba(165, 180, 252, 0.12);
+            --wexp-link-borde: rgba(165, 180, 252, 0.32);
+            --wexp-sombra: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+    }
+    .wexp-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4338ca 55%, #312e81 100%);
+        border-radius: 18px;
+        padding: 26px 28px;
+        color: #ffffff;
+    }
+    .wexp-cabecera-fila { display: flex; align-items: center; gap: 14px; }
+    .wexp-marca {
+        flex: none;
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .wexp-titulos { min-width: 0; }
+    .wexp-header h1 {
+        margin: 0;
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        line-height: 1.25;
+    }
+    .wexp-sub { margin: 3px 0 0; font-size: 12.5px; color: rgba(255, 255, 255, 0.78); }
+    .wexp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .wexp-chip {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.13);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .wexp-tabla-card {
+        background: var(--wexp-tarjeta);
+        border: 1px solid var(--wexp-borde);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-top: 20px;
+        box-shadow: var(--wexp-sombra);
+    }
+    table.wexp-tabla { width: 100%; border-collapse: collapse; }
+    .wexp-tabla th {
+        text-align: left;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--wexp-texto-suave);
+        background: var(--wexp-cabecera);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--wexp-borde);
+    }
+    .wexp-tabla td { padding: 11px 16px; border-bottom: 1px solid var(--wexp-borde); vertical-align: middle; }
+    .wexp-tabla tbody tr:nth-child(even) { background: var(--wexp-fila-alterna); }
+    .wexp-tabla tbody tr:hover { background: var(--wexp-hover); }
+    .wexp-tabla tbody tr:last-child td { border-bottom: none; }
+    .wexp-tabla tr { break-inside: avoid; }
+    .wexp-nombre { font-weight: 600; }
+    .wexp-grupo {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: var(--wexp-pill-fondo);
+        color: var(--wexp-acento);
+        font-size: 12.5px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .wexp-fecha { color: var(--wexp-texto-suave); font-size: 13px; white-space: nowrap; }
+    .wexp-vacio { color: var(--wexp-texto-suave); opacity: 0.7; }
+    a.wexp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 320px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--wexp-pill-fondo);
+        border: 1px solid var(--wexp-link-borde);
+        color: var(--wexp-acento);
+        text-decoration: none;
+        font-size: 12.5px;
+    }
+    a.wexp-link:hover { text-decoration: underline; }
+    a.wexp-link svg { flex: none; }
+    a.wexp-link span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wexp-footer { margin: 18px 0 0; text-align: center; font-size: 11.5px; color: var(--wexp-texto-suave); }
+`;
+        }
+
+        // ── Documento de exportación ──
+        // Genera el listado exportado: una tarjeta de cabecera con el
+        // curso, el número de registros, los filtros aplicados y la
+        // fecha, y una tabla con las columnas elegidas en el modal.
+        // Cada enlace se abre en una pestaña nueva (target="_blank" +
+        // rel="noopener noreferrer"). Con "paraPdf" el fragmento viaja
+        // con sus estilos y fijado a modo claro (el PDF debe ser
+        // imprimible); el archivo HTML final sigue el tema del sistema.
+        function getExportHTMLContent(paraPdf) {
             const checkboxes = document.querySelectorAll('#export-fields input[type="checkbox"]:checked');
             const selectedFields = Array.from(checkboxes).map(cb => cb.value);
 
@@ -1309,47 +1470,94 @@
 
             // Se exporta la lista filtrada (curso + filtros de nombre/grupo)
             const dataToExport = getDatosFiltrados().slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+            const totalCurso = getDatosCurso().length;
 
             const fieldNames = {
-                'curso': 'Curso', 'nombre': 'Alumno', 'grupo': 'Grupo', 
+                'curso': 'Curso', 'nombre': 'Alumno', 'grupo': 'Grupo',
                 'url': 'Enlace (URL)', 'notas': 'Notas', 'fecha': 'Fecha'
             };
 
-            // Cabecera con el número de registros y los filtros aplicados
-            const resumenFiltros = (filtroNombre.trim() || filtroGrupo)
-                ? `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 0 0 14px 0;">Listado filtrado (${dataToExport.length} de ${getDatosCurso().length} wikis) — ${escapeHtml(descripcionFiltros())}</p>`
-                : `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 0 0 14px 0;">Listado completo del curso ${selectedCourse} (${dataToExport.length} wikis)</p>`;
+            const hayFiltros = Boolean(filtroNombre.trim() || filtroGrupo);
+            const plural = dataToExport.length !== 1 ? 'wikis' : 'wiki';
+            const ahora = new Date();
+            const fechaGen = ahora.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 
-            let html = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #4338ca; text-align: center; margin-bottom: 4px;">Registro de Wikis de Alumnado</h2>
-                ${resumenFiltros}
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                    <thead>
-                        <tr style="background-color: #f3f4f6;">
-                            ${selectedFields.map(f => `<th style="border: 1px solid #d1d5db; padding: 10px; text-align: left;">${fieldNames[f]}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+            // Chips informativos de la cabecera
+            const chips = [`<span class="wexp-chip">Curso ${escapeHtml(selectedCourse)}</span>`];
+            chips.push(hayFiltros
+                ? `<span class="wexp-chip">${dataToExport.length} de ${totalCurso} ${plural}</span>`
+                : `<span class="wexp-chip">${dataToExport.length} ${plural}</span>`);
+            if (filtroGrupo === '__sin_grupo__') chips.push('<span class="wexp-chip">Grupo: sin grupo</span>');
+            else if (filtroGrupo) chips.push(`<span class="wexp-chip">Grupo: ${escapeHtml(filtroGrupo)}</span>`);
+            if (filtroNombre.trim()) chips.push(`<span class="wexp-chip">Búsqueda: “${escapeHtml(filtroNombre.trim())}”</span>`);
+            chips.push(`<span class="wexp-chip">Generado el ${fechaGen}</span>`);
 
-            dataToExport.forEach(item => {
-                html += '<tr style="border-bottom: 1px solid #e5e7eb;">';
-                selectedFields.forEach(f => {
-                    let val = item[f] || '';
-                    if (f === 'fecha') {
-                        const d = new Date(val);
-                        val = !isNaN(d.getTime()) ? d.toLocaleDateString() : '';
-                    } else if (f === 'url' && val) {
-                        val = `<a href="${val}" style="color: #2563eb; text-decoration: none;">${val}</a>`;
-                    }
-                    html += `<td style="border: 1px solid #d1d5db; padding: 8px;">${val}</td>`;
-                });
-                html += '</tr>';
-            });
+            const filas = dataToExport.map(item => {
+                const celdas = selectedFields.map(f => {
+                    const val = (item[f] || '').toString().trim();
+                    return `<td>${renderCeldaExport(f, val)}</td>`;
+                }).join('');
+                return `<tr>${celdas}</tr>`;
+            }).join('');
 
-            html += `</tbody></table></div>`;
-            return html;
+            const html = `
+<div class="${paraPdf ? 'wexp-root wexp-fijo-claro' : 'wexp-root'}">
+    <header class="wexp-header">
+        <div class="wexp-cabecera-fila">
+            <div class="wexp-marca">
+                <svg width="26" height="26" viewBox="0 0 1024 1024" aria-hidden="true">
+                    <defs><linearGradient id="wexp-ig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#818cf8"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs>
+                    <rect width="1024" height="1024" rx="230" fill="url(#wexp-ig)"/>
+                    <polygon points="512,336 204,376 204,676 512,736" fill="#ffffff"/>
+                    <polygon points="512,336 820,376 820,676 512,736" fill="#ffffff"/>
+                    <g stroke="#4f46e5" stroke-width="24" stroke-linecap="round">
+                        <line x1="268" y1="440" x2="452" y2="440"/>
+                        <line x1="572" y1="440" x2="756" y2="440"/>
+                        <line x1="268" y1="512" x2="420" y2="512"/>
+                        <line x1="604" y1="512" x2="756" y2="512"/>
+                        <line x1="268" y1="584" x2="452" y2="584"/>
+                        <line x1="572" y1="584" x2="756" y2="584"/>
+                    </g>
+                </svg>
+            </div>
+            <div class="wexp-titulos">
+                <h1>Registro de Wikis de Alumnado</h1>
+                <p class="wexp-sub">${hayFiltros ? 'Listado filtrado de wikis' : 'Listado completo del curso ' + escapeHtml(selectedCourse)}</p>
+            </div>
+        </div>
+        <div class="wexp-chips">${chips.join('')}</div>
+    </header>
+    <div class="wexp-tabla-card">
+        <table class="wexp-tabla">
+            <thead>
+                <tr>${selectedFields.map(f => `<th>${fieldNames[f]}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+                ${filas}
+            </tbody>
+        </table>
+    </div>
+    <p class="wexp-footer">Generado por el Gestor de Wikis de Alumnado · ${fechaGen}, ${ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · ${dataToExport.length} ${plural}</p>
+</div>`;
+            return paraPdf ? `<style>${getExportStyles()}</style>${html}` : html;
+        }
+
+        // Celda de la tabla exportada según el campo (todo el texto
+        // dinámico se escapa). Las URL se muestran como píldoras que
+        // abren en una pestaña nueva; grupo y fecha, con estilos suaves.
+        function renderCeldaExport(campo, val) {
+            if (!val) return '<span class="wexp-vacio">—</span>';
+            if (campo === 'url') {
+                const safe = escapeHtml(val);
+                return `<a class="wexp-link" href="${safe}" target="_blank" rel="noopener noreferrer" title="Abrir en una pestaña nueva: ${safe}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg><span>${safe}</span></a>`;
+            }
+            if (campo === 'grupo') return `<span class="wexp-grupo">${escapeHtml(val)}</span>`;
+            if (campo === 'fecha') {
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? '<span class="wexp-vacio">—</span>' : `<span class="wexp-fecha">${escapeHtml(d.toLocaleDateString('es-ES'))}</span>`;
+            }
+            if (campo === 'nombre') return `<span class="wexp-nombre">${escapeHtml(val)}</span>`;
+            return escapeHtml(val);
         }
 
         // Nombre de archivo que identifica curso y filtros aplicados
@@ -1364,14 +1572,26 @@
         }
 
         function exportData(format) {
-            const htmlContent = getExportHTMLContent();
+            const htmlContent = getExportHTMLContent(format === 'pdf');
             if (!htmlContent) {
                 showMessage("Selecciona al menos un campo para exportar", "error");
                 return;
             }
 
             if (format === 'html') {
-                const fullHtml = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Exportación Wikis</title></head><body>${htmlContent}</body></html>`;
+                const titulo = `Wikis ${selectedCourse} · Registro de Wikis de Alumnado`;
+                const fullHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(titulo)}</title>
+<style>${getExportStyles()}</style>
+</head>
+<body class="wexp-body">
+${htmlContent}
+</body>
+</html>`;
                 const blob = new Blob([fullHtml], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1381,21 +1601,24 @@
                 URL.revokeObjectURL(url);
                 closeExportModal();
                 showMessage(`Lista exportada (${getDatosFiltrados().length} wikis)`);
-            } 
+            }
             else if (format === 'pdf') {
                 const container = document.createElement('div');
                 container.innerHTML = htmlContent;
-                
+
                 const opt = {
                   margin:       10,
                   filename:     nombreArchivoExport('pdf'),
                   image:        { type: 'jpeg', quality: 0.98 },
                   html2canvas:  { scale: 2 },
-                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                  // Respeta el "break-inside: avoid" de las filas para
+                  // que ninguna fila de la tabla quede cortada en dos
+                  pagebreak:    { mode: ['css', 'legacy'] }
                 };
-                
+
                 showMessage("Generando PDF, por favor espera...", "info");
-                
+
                 html2pdf().set(opt).from(container).save().then(() => {
                     closeExportModal();
                 });
