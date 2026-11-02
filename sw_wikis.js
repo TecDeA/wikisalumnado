@@ -165,3 +165,12 @@ async function staleWhileRevalidate(request) {
     .catch(() => cached); // si la red falla y había caché, se reutiliza
   return cached || networkUpdate;
 }
+
+// ── Versión de la app ─────────────────────────────────────
+// La interfaz la pide para pintar el chip de la cabecera:
+// responde con el CACHE_NAME vigente ("wikis-alumnos-vX.Y").
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_VERSION' && event.ports[0]) {
+    event.ports[0].postMessage({ version: CACHE_NAME });
+  }
+});
